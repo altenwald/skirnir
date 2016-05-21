@@ -10,24 +10,16 @@ defmodule Skirnir.Mixfile do
      deps: deps]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type "mix help compile.app" for more information
   def application do
     [applications: [:logger, :ranch],
      mod: {Skirnir, []}]
   end
 
-  # Dependencies can be Hex packages:
-  #
-  #   {:mydep, "~> 0.3.0"}
-  #
-  # Or git/path repositories:
-  #
-  #   {:mydep, git: "https://github.com/elixir-lang/mydep.git", tag: "0.1.0"}
-  #
-  # Type "mix help deps" for more examples and options
   defp deps do
-    [{:ranch, "~> 1.0.0"}]
+    [{:ranch, "~> 1.0.0"},
+     {:exleveldb, "~> 0.6.0"},
+     {:hashids, "~> 2.0"},
+     {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
+     {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"}]
   end
 end

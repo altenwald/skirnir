@@ -4,7 +4,7 @@ defmodule Skirnir do
   use Application
 
   @options [port: 2525]
-  @protocol Skirnir.Smtp
+  @protocol Skirnir.Smtp.Server
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
@@ -13,9 +13,8 @@ defmodule Skirnir do
 
     # Define workers and child supervisors to be supervised
     children = [
-      # Starts a worker by calling: Skirnir.Worker.start_link(arg1, arg2, arg3)
-      # worker(Skirnir.Worker, [arg1, arg2, arg3]),
-      worker(__MODULE__, [@options, @protocol])
+      worker(__MODULE__, [@options, @protocol]),
+      worker(Skirnir.Smtp.Server.Storage, [])
     ]
 
     opts = [strategy: :one_for_one, name: Skirnir.Supervisor]

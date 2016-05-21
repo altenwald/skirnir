@@ -10,4 +10,5 @@ config :logger, :console,
 
 config :skirnir,
     domain: "altenwald.com",
+    hostname: "elm.altenwald.com",
     relay: false
