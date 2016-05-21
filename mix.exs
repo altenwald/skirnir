@@ -4,7 +4,7 @@ defmodule Skirnir.Mixfile do
   def project do
     [app: :skirnir,
      version: "0.0.1",
-     elixir: "~> 1.3-dev",
+     elixir: "~> 1.3.0-dev",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]
@@ -14,7 +14,7 @@ defmodule Skirnir.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger],
+    [applications: [:logger, :ranch],
      mod: {Skirnir, []}]
   end
 
@@ -28,6 +28,6 @@ defmodule Skirnir.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    []
+    [{:ranch, "~> 1.0.0"}]
   end
 end
