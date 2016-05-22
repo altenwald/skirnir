@@ -11,7 +11,7 @@ defmodule Skirnir.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :ranch],
+    [applications: [:logger, :ranch, :timex],
      mod: {Skirnir, []}]
   end
 
@@ -19,6 +19,7 @@ defmodule Skirnir.Mixfile do
     [{:ranch, "~> 1.0.0"},
      {:exleveldb, "~> 0.6.0"},
      {:hashids, "~> 2.0"},
+     {:timex, "~> 2.1.4"},
      {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
      {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"}]
   end
