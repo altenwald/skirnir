@@ -117,7 +117,7 @@ defmodule Skirnir.Smtp.Server do
     def mail_from({:mail_from, from, _from_domain}, state_data) do
         %StateData{send: send, domain: _domain, id: id} = state_data
         # TODO: if from is in the same domain, needs auth?
-        Logger.info("[smtp] [#{id}] mail from: #{from}")
+        Logger.info("[smtp] [#{id}] mail from: <#{from}>")
         send.(error(250))
         {:next_state, :rcpt_to, %StateData{state_data | from: from, tries: @tries}}
     end
