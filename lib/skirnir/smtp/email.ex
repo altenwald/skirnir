@@ -1,3 +1,5 @@
+require Timex
+
 defmodule Skirnir.Smtp.Email do
     import Skirnir.Smtp.Server.Parser, only: [parse_header: 1]
 
