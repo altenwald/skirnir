@@ -1,29 +1,36 @@
+require Logger
+
 defmodule Skirnir.Smtp.Server.Storage do
 
     @salt "skirnir default salt"
     @alphabet "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    def start_link, do: Agent.start_link(&init/0, name: __MODULE__)
+    def start_link do
+        Logger.info("[storage] starting leveldb storage")
+        Agent.start_link(&init/0, name: __MODULE__)
+    end
 
-    def stop, do: Agent.stop(__MODULE__)
+    def stop do
+        Logger.info("[storage] stop")
+        Agent.stop(__MODULE__)
+    end
 
     def init() do
         storage = Application.get_env(:skirnir, :storage, "db")
         {:ok, db} = Exleveldb.open storage, create_if_missing: true
+        Logger.debug("[storage] init leveldb: #{inspect(db)}")
         db
     end
 
     def gen_id() do
-        hashids = Hashids.new(salt: Application.get_env(:skirnir, :salt, @salt),
+        hashids = Hashids.new(salt: @salt,
                               min_len: 6,
                               alphabet: @alphabet)
         Hashids.encode(hashids, :os.system_time(:micro_seconds))
     end
 
-    def add(mail) do
-        mail_id = gen_id()
-        :ok = put(mail_id, mail)
-        mail_id
+    def keys() do
+        Exleveldb.map_keys(get_db(), &(&1))
     end
 
     def get(mail_id) do

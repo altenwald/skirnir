@@ -22,7 +22,7 @@ defmodule Skirnir.Smtp.Email do
         }
     end
 
-    def create(id, data) do
+    def create(data) do
         timestamp = Timex.DateTime.now()
         {headers_raw, [_|content_raw]} =
             data.data
@@ -34,13 +34,13 @@ defmodule Skirnir.Smtp.Email do
             |> Enum.map(&parse_header/1)
             |> Enum.reverse
             |> parse_headers
-            |> add_received(id, data, timestamp)
+            |> add_received(data, timestamp)
             |> add_return_path(data.from)
 
         content = Enum.join(content_raw, "\r\n")
 
         %Email{
-            id: id,
+            id: data.id,
             mail_from: data.from,
             recipients: data.recipients,
             headers: headers,
@@ -56,9 +56,9 @@ defmodule Skirnir.Smtp.Email do
         end
     end
 
-    def add_received(headers, id, data, timestamp) do
+    def add_received(headers, data, timestamp) do
         value = "from #{data.host} (#{data.remote_name} [#{data.address}]) " <>
-                "by #{data.hostname} (Skirnir) with SMTP id #{id} " <>
+                "by #{data.hostname} (Skirnir) with SMTP id #{data.id} " <>
                 case data.recipients do
                     [recipient] -> "for <#{recipient}>; "
                     _ -> ""
