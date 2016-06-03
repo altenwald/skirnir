@@ -14,7 +14,8 @@ defmodule Skirnir do
     # Define workers and child supervisors to be supervised
     children = [
       worker(__MODULE__, [@options, @protocol]),
-      worker(Skirnir.Smtp.Server.Storage, [])
+      worker(Skirnir.Smtp.Server.Storage, []),
+      worker(Skirnir.Smtp.Queue, [])
     ]
 
     opts = [strategy: :one_for_one, name: Skirnir.Supervisor]
