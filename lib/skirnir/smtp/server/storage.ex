@@ -4,6 +4,7 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     @salt "skirnir default salt"
     @alphabet "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    @min_len 12
 
     def start_link do
         Logger.info("[storage] starting leveldb storage")
@@ -24,7 +25,7 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     def gen_id() do
         hashids = Hashids.new(salt: @salt,
-                              min_len: 6,
+                              min_len: @min_len,
                               alphabet: @alphabet)
         Hashids.encode(hashids, :os.system_time(:micro_seconds))
     end
