@@ -17,7 +17,7 @@ defmodule Skirnir.Smtp.Server.Storage do
     end
 
     def init() do
-        storage = Application.get_env(:skirnir, :storage, "db")
+        storage = Application.get_env(:skirnir, :queue_storage, "db")
         {:ok, db} = Exleveldb.open storage, create_if_missing: true
         Logger.debug("[storage] init leveldb: #{inspect(db)}")
         db
@@ -41,11 +41,13 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     def delete(mail_id) do
         :ok = Exleveldb.delete(get_db(), mail_id)
+        Logger.info("[storage] [#{mail_id}] removed")
     end
 
     def put(mail_id, mail) do
         mail_serialized = :erlang.term_to_binary(mail)
         :ok = Exleveldb.put(get_db(), mail_id, mail_serialized, [])
+        Logger.info("[storage] [#{mail_id}] stored")
     end
 
     defp get_db(), do: Agent.get(__MODULE__, &(&1))

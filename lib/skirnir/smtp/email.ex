@@ -3,14 +3,14 @@ require Timex
 defmodule Skirnir.Smtp.Email do
     import Skirnir.Smtp.Server.Parser, only: [parse_header: 1]
 
-    defmodule Email do
-        defstruct id: nil,
-                  timestamp: nil,
-                  mail_from: nil,
-                  recipients: [],
-                  headers: [],
-                  content: ""
-    end
+    alias Skirnir.Smtp.Email
+
+    defstruct id: nil,
+              timestamp: nil,
+              mail_from: nil,
+              recipients: [],
+              headers: [],
+              content: ""
 
     def create(id, mail_from, recipients, headers, content) do
         %Email{
@@ -60,7 +60,7 @@ defmodule Skirnir.Smtp.Email do
         value = "from #{data.host} (#{data.remote_name} [#{data.address}]) " <>
                 "by #{data.hostname} (Skirnir) with SMTP id #{data.id} " <>
                 case data.recipients do
-                    [recipient] -> "for <#{recipient}>; "
+                    [{recipient,_}] -> "for <#{recipient}>; "
                     _ -> ""
                 end <>
                 Timex.format!(timestamp,

@@ -6,6 +6,7 @@ defmodule Skirnir.Smtp.Server do
     import Skirnir.Smtp.ErrorCodes, only: [error: 1, error: 2, error: 3]
 
     alias Skirnir.Smtp.Server.Storage
+    alias Skirnir.Smtp.Server.Queue
     alias Skirnir.Smtp.Email
 
     @behaviour :ranch_protocol
@@ -161,7 +162,7 @@ defmodule Skirnir.Smtp.Server do
             relay when is_boolean(relay) ->
                 Logger.info("[smtp] [#{id}] recipient: <#{to}>")
                 send.(error(250))
-                recipients = [to | state_data.recipients]
+                recipients = [{to, to_domain} | state_data.recipients]
                 newstate = %StateData{state_data | recipients: recipients,
                                                    tries: @tries}
                 {:next_state, :rcpt_to, newstate}
@@ -208,8 +209,7 @@ defmodule Skirnir.Smtp.Server do
         id = state_data.id
         email = Email.create(state_data)
         Storage.put(id, email)
-        Logger.info("[smtp] [#{id}] stored email")
-        # TODO: add message to queue to be sent
+        Queue.enqueue(id)
         state_data.send.(error(250, "2.0.0", id))
         newstate = %StateData{state_data | id: Storage.gen_id(),
                                            data: "",

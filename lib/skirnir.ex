@@ -15,8 +15,10 @@ defmodule Skirnir do
     children = [
       worker(__MODULE__, [@options, @protocol]),
       worker(Skirnir.Smtp.Server.Storage, []),
-      worker(Skirnir.Smtp.Queue, [])
+      worker(Skirnir.Smtp.Server.Queue, [])
     ]
+
+    Skirnir.Delivery.Storage.init()
 
     opts = [strategy: :one_for_one, name: Skirnir.Supervisor]
     Supervisor.start_link(children, opts)

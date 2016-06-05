@@ -26,6 +26,24 @@ config :logger, :file,
 #     port: 514
 
 config :skirnir,
+
+    # domain for the emails
     domain: "altenwald.com",
+
+    # hostname of the server handling the emails
     hostname: "elm.altenwald.com",
-    relay: false
+
+    # enable/disable relay
+    relay: false,
+
+    # throughput, handle X msg/sec in the queue
+    queue_threshold: 50,
+
+    # path for the local storage (queue)
+    queue_storage: "db",
+
+    # type of database for delivery storage
+    # it should be one of those:
+    # - Skirnir.Delivery.Storage.Postgresql
+    # - Skirnir.Delivery.Storage.Couchbase
+    delivery_storage: Skirnir.Delivery.Storage.Postgresql
