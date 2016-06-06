@@ -4,13 +4,21 @@ defmodule Skirnir.Smtp.Email do
     import Skirnir.Smtp.Server.Parser, only: [parse_header: 1]
 
     alias Skirnir.Smtp.Email
+    alias Timex.DateTime
+
+    # retry every 4 hours
+    @retry_time (4 * 3600)
+
+    # expires in 4 days
+    @expires (4 * 24 * 3600)
 
     defstruct id: nil,
               timestamp: nil,
               mail_from: nil,
               recipients: [],
               headers: [],
-              content: ""
+              content: "",
+              next_try: nil
 
     def create(id, mail_from, recipients, headers, content) do
         %Email{
@@ -23,7 +31,7 @@ defmodule Skirnir.Smtp.Email do
     end
 
     def create(data) do
-        timestamp = Timex.DateTime.now()
+        timestamp = DateTime.now()
         {headers_raw, [_|content_raw]} =
             data.data
             |> String.split("\r\n")
@@ -48,6 +56,28 @@ defmodule Skirnir.Smtp.Email do
             timestamp: timestamp
         }
     end
+
+    def update_on_fail(%Email{next_try: nil} = mail) do
+        {:ok, %Email{mail | next_try: next_try()}}
+    end
+
+    def update_on_fail(mail) do
+        expired_time = DateTime.shift(mail.timestamp, seconds: expires())
+        if Timex.before?(expired_time, Timex.DateTime.now()) do
+            {:error, :expired}
+        else
+            {:ok, %Email{mail | next_try: next_try()}}
+        end
+    end
+
+    defp next_try(),
+        do: DateTime.shift(Timex.DateTime.now(), seconds: retry_time())
+
+    defp retry_time(),
+        do: Application.get_env(:skirnir, :message_retry_in, @retry_time)
+
+    defp expires(),
+        do: Application.get_env(:skirnir, :message_expiration, @expires)
 
     def add_return_path(headers, mail_from) do
         case List.keyfind(headers, "Return-Path", 0) do

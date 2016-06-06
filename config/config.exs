@@ -46,4 +46,10 @@ config :skirnir,
     # it should be one of those:
     # - Skirnir.Delivery.Storage.Postgresql
     # - Skirnir.Delivery.Storage.Couchbase
-    delivery_storage: Skirnir.Delivery.Storage.Postgresql
+    delivery_storage: Skirnir.Delivery.Storage.Postgresql,
+
+    # message should be retried in X seconds
+    message_retry_in: 5,
+
+    # message expiration time in X seconds
+    message_expiration: 20
