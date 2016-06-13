@@ -8,6 +8,11 @@ defmodule Skirnir.Smtp.Server.Parser do
         {:hello, String.strip(host)}
     end
 
+    def command(<<"EHLO ", _ :: binary()>>, <<_ :: size(40), host :: binary()>>) do
+        {:hello_extended, String.strip(host)}
+    end
+
+    def command(<<"STARTTLS", _ :: binary()>>, _), do: :starttls
 
     def command(<<"MAIL FROM:", _ :: binary()>>, <<_ :: size(80), from :: binary()>>) do
         case parse_email(from) do
@@ -25,6 +30,7 @@ defmodule Skirnir.Smtp.Server.Parser do
 
     def command(<<"DATA", _ :: binary()>>, _), do: :data
     def command(<<"QUIT", _ :: binary()>>, _), do: :quit
+    def command(<<"NOOP", _ :: binary()>>, _), do: :noop
 
     def parse_header(data) do
         case Regex.run(~r/^([\x21-\x39,\x3b-\x7e]+):(.+)$/, data) do

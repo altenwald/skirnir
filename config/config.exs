@@ -52,4 +52,8 @@ config :skirnir,
     message_retry_in: 5,
 
     # message expiration time in X seconds
-    message_expiration: 20
+    message_expiration: 20,
+
+    # TLS info
+    tls_key_file: "config/server.key",
+    tls_cert_file: "config/server.crt"

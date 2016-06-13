@@ -8,6 +8,7 @@ defmodule Skirnir.Smtp.Server do
     alias Skirnir.Smtp.Server.Storage
     alias Skirnir.Smtp.Server.Queue
     alias Skirnir.Smtp.Email
+    alias Skirnir.Smtp.Tls
 
     @behaviour :ranch_protocol
     @timeout 5000
@@ -17,10 +18,12 @@ defmodule Skirnir.Smtp.Server do
         defstruct id: nil,
                   # connection
                   socket: nil,
+                  tcp_socket: nil,
                   transport: nil,
                   # info for connection
                   address: nil,
                   remote_name: nil,
+                  tls: false,
                   # closures
                   send: nil,
                   # config
@@ -92,10 +95,45 @@ defmodule Skirnir.Smtp.Server do
         {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
     end
 
-    def hello(:quit, state_data) do
-        state_data.send.(error(221))
-        Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
-        {:stop, :normal, state_data}
+    def hello({:hello_extended, host}, %StateData{tls: false} = state_data) do
+        %StateData{send: send, hostname: hostname, id: id} = state_data
+        # TODO: check host or not, depending on configuration
+        Logger.debug("[smtp] [#{id}] received EHLO: #{host}")
+        # TODO: add extensions based on developed extensions and configuration
+        # TODO: add PIPELINING
+        send.(
+            """
+            250-#{hostname}
+            250-SIZE 307200000
+            250-ETRN
+            250-STARTTLS
+            250-AUTH PLAIN LOGIN
+            250-AUTH=PLAIN LOGIN
+            250-ENHANCEDSTATUSCODES
+            250-8BITMIME
+            250 DSN
+            """)
+        {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
+    end
+
+    def hello({:hello_extended, host}, state_data) do
+        %StateData{send: send, hostname: hostname, id: id} = state_data
+        # TODO: check host or not, depending on configuration
+        Logger.debug("[smtp] [#{id}] received via TLS EHLO: #{host}")
+        # TODO: add extensions based on developed extensions and configuration
+        # TODO: add PIPELINING
+        send.(
+            """
+            250-#{hostname}
+            250-SIZE 307200000
+            250-ETRN
+            250-AUTH PLAIN LOGIN
+            250-AUTH=PLAIN LOGIN
+            250-ENHANCEDSTATUSCODES
+            250-8BITMIME
+            250 DSN
+            """)
+        {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
     end
 
     def hello(_whatever, %StateData{tries: 0}=state_data) do
@@ -129,12 +167,6 @@ defmodule Skirnir.Smtp.Server do
         {:next_state, :mail_from, state_data}
     end
 
-    def mail_from(:quit, state_data) do
-        state_data.send.(error(221))
-        Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
-        {:stop, :normal, state_data}
-    end
-
     def mail_from(_whatever, %StateData{tries: 0}=state_data) do
         %StateData{send: send, id: id} = state_data
         Logger.error("[smtp] [#{id}] [mail_from] too much fails")
@@ -145,7 +177,7 @@ defmodule Skirnir.Smtp.Server do
     def mail_from(whatever, state_data) do
         %StateData{send: send, tries: tries, id: id} = state_data
         Logger.error("[smtp] [#{id}] [mail_from] invalid command: #{inspect(whatever)}")
-        send.(error(503))
+        send.(error(502, "5.5.2"))
         {:next_state, :mail_from, %StateData{state_data | tries: tries - 1 }}
     end
 
@@ -173,12 +205,6 @@ defmodule Skirnir.Smtp.Server do
         Logger.error("[smtp] [#{state_data.id}] bad email direction in rcpt_to")
         state_data.send.(error(501, "5.1.3"))
         {:next_state, :rcpt_to, state_data}
-    end
-
-    def rcpt_to(:quit, state_data) do
-        state_data.send.(error(221))
-        Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
-        {:stop, :normal, state_data}
     end
 
     def rcpt_to(:data, state_data) do
@@ -248,13 +274,13 @@ defmodule Skirnir.Smtp.Server do
     #---------------------------------------------------------------------------
     # handle info with data state
     #---------------------------------------------------------------------------
-    def handle_info({:tcp, _port, ".\r\n"}, :data, state_data) do
+    def handle_info({_trans, _port, ".\r\n"}, :data, state_data) do
         :gen_fsm.send_event(self(), :data)
         state_data.transport.setopts(state_data.socket, [{:active, :once}])
         {:next_state, :data, state_data}
     end
 
-    def handle_info({:tcp, _port, newdata}, :data, state_data) do
+    def handle_info({_trans, _port, newdata}, :data, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         transport.setopts(socket, [{:active, :once}])
         case String.ends_with?(newdata, "\r\n.\r\n") do
@@ -271,11 +297,59 @@ defmodule Skirnir.Smtp.Server do
     #---------------------------------------------------------------------------
     # handle info with the rest of states
     #---------------------------------------------------------------------------
-    def handle_info({:tcp, _port, newdata}, state, state_data) do
-        :gen_fsm.send_event(self(), parse(newdata))
+    def handle_info({:ssl, ssl_socket, newdata}, state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
-        transport.setopts(socket, [{:active, :once}])
-        {:next_state, state, state_data}
+        Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
+        case parse(newdata) do
+            :noop ->
+                state_data.send.(error(250, "2.0.0"))
+                transport.setopts(socket, [{:active, :once}])
+                {:next_state, state, state_data}
+            :quit ->
+                state_data.send.(error(221))
+                Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
+                transport.setopts(socket, [{:active, :once}])
+                {:stop, :normal, state_data}
+            command ->
+                :gen_fsm.send_event(self(), command)
+                transport.setopts(socket, [{:active, :once}])
+                {:next_state, state, state_data}
+        end
+    end
+
+    def handle_info({:tcp, _port, newdata}, state, state_data) do
+        %StateData{socket: socket, transport: transport} = state_data
+        Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
+        case parse(newdata) do
+            :starttls ->
+                Logger.debug("[smtp] [#{state_data.id}] changing to TLS")
+                transport.setopts(socket, [{:active, :false}])
+                state_data.send.("220 2.0.0 Ready to start TLS\n")
+                {:ok, ssl_socket} = Tls.accept(socket)
+                transport = :ranch_ssl
+                transport.setopts(ssl_socket, [{:active, :once}])
+                send = fn(data) -> :ranch_ssl.send(ssl_socket, data) end
+                Logger.debug("[smtp] [#{state_data.id}] changed to TLS")
+                {:next_state, :hello,
+                 %StateData{state_data | transport: :ssl,
+                                         send: send,
+                                         tls: true,
+                                         socket: ssl_socket,
+                                         tcp_socket: socket}}
+            :noop ->
+                state_data.send.(error(250, "2.0.0"))
+                transport.setopts(socket, [{:active, :once}])
+                {:next_state, state, state_data}
+            :quit ->
+                state_data.send.(error(221))
+                Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
+                transport.setopts(socket, [{:active, :once}])
+                {:stop, :normal, state_data}
+            command ->
+                :gen_fsm.send_event(self(), command)
+                transport.setopts(socket, [{:active, :once}])
+                {:next_state, state, state_data}
+        end
     end
 
     # --------------------------------------------------------------------------

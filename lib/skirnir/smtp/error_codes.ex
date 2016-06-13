@@ -6,6 +6,7 @@ defmodule Skirnir.Smtp.ErrorCodes do
     def error(220, _, domain), do: "220 ESMTP #{domain}\n"
     def error(221, "2.7.0", _), do: "221 2.7.0 Error: I can break rules, too. Goodbye.\n"
     def error(221, _, _), do: "221 2.0.0 Bye\n"
+    def error(250, "2.0.0", nil), do: "250 2.0.0 Ok\n"
     def error(250, "2.0.0", id) when id != nil, do: "250 2.0.0 Ok: queued as #{id}\n"
     def error(250, _, _), do: "250 2.1.0 Ok\n"
     def error(354, _, _), do: "354 End data with <CR><LF>.<CR><LF>\n"
