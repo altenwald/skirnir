@@ -17,7 +17,7 @@ defmodule Skirnir.Delivery.Storage do
                 :ok
             end
 
-            def put(user, id, email) do
+            def put(user, id, email, path) do
                 Logger.error("[delivery] [#{id}] no storage!")
                 {:error, :notimpl}
             end
@@ -56,8 +56,8 @@ defmodule Skirnir.Delivery.Storage do
         Application.get_env(:skirnir, :delivery_storage, default)
     end
 
-    def put(user, id, email) do
-        apply(backend(), :put, [user, id, email])
+    def put(user, id, email, path) do
+        apply(backend(), :put, [user, id, email, path])
     end
 
     def get(user, id) do

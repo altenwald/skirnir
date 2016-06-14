@@ -26,6 +26,7 @@ defmodule Skirnir.Mixfile do
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},
      {:postgrex, ">= 0.0.0"},
+     {:json, "~> 0.3.0"},
      # test deps:
      {:cobertura_cover, "~> 0.9.0", only: :test}]
   end

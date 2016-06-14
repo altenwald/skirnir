@@ -25,6 +25,13 @@ config :logger, :file,
 #     host: "127.0.0.1",
 #     port: 514
 
+config :postgrex,
+    hostname: "localhost",
+    username: "myapp",
+    password: "dbpass",
+    database: "myapp",
+    port: 15432
+
 config :skirnir,
 
     # domain for the emails

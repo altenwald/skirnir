@@ -86,6 +86,13 @@ defmodule Skirnir.Smtp.Email do
         end
     end
 
+    def get_header(headers, key) do
+        case List.keyfind(headers, key, 0) do
+            {^key, value} -> value
+            nil -> nil
+        end
+    end
+
     def add_received(headers, data, timestamp) do
         value = "from #{data.host} (#{data.remote_name} [#{data.address}]) " <>
                 "by #{data.hostname} (Skirnir) with SMTP id #{data.id} " <>

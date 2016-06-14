@@ -27,7 +27,10 @@ defmodule Skirnir.Smtp.Server.Router do
 
     def process_mda(recipient, id, mail) do
         Logger.debug("[router] [#{id}] processing locally (MDA)")
-        case DeliveryStorage.put(recipient, id, mail) do
+        # TODO process the delivery rules to set the path or action to be
+        #      done in the message
+        path = "INBOX"
+        case DeliveryStorage.put(recipient, id, mail, path) do
             :ok ->
                 QueueStorage.delete(id)
             {:error, _error} ->

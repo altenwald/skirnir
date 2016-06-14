@@ -17,11 +17,12 @@ defmodule Skirnir do
       worker(Skirnir.Smtp.Server.Storage, []),
       worker(Skirnir.Smtp.Server.Queue, [])
     ]
+    opts = [strategy: :one_for_one, name: Skirnir.Supervisor]
+    {:ok, supervisor} = Supervisor.start_link(children, opts)
 
     Skirnir.Delivery.Storage.init()
 
-    opts = [strategy: :one_for_one, name: Skirnir.Supervisor]
-    Supervisor.start_link(children, opts)
+    {:ok, supervisor}
   end
 
   @doc """
