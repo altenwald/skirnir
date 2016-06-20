@@ -292,31 +292,11 @@ defmodule Skirnir.Smtp.Server do
     #---------------------------------------------------------------------------
     # handle info with the rest of states
     #---------------------------------------------------------------------------
-    def handle_info({:ssl, ssl_socket, newdata}, state, state_data) do
+    def handle_info({trans, _port, newdata}, state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
         case parse(newdata) do
-            :noop ->
-                state_data.send.(error(250, "2.0.0"))
-                transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data}
-            :quit ->
-                state_data.send.(error(221))
-                Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
-                transport.setopts(socket, [{:active, :once}])
-                {:stop, :normal, state_data}
-            command ->
-                :gen_fsm.send_event(self(), command)
-                transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data}
-        end
-    end
-
-    def handle_info({:tcp, _port, newdata}, state, state_data) do
-        %StateData{socket: socket, transport: transport} = state_data
-        Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
-        case parse(newdata) do
-            :starttls ->
+            :starttls when trans == :tcp ->
                 Logger.debug("[smtp] [#{state_data.id}] changing to TLS")
                 transport.setopts(socket, [{:active, :false}])
                 state_data.send.("220 2.0.0 Ready to start TLS\n")
@@ -332,19 +312,33 @@ defmodule Skirnir.Smtp.Server do
                                          socket: ssl_socket,
                                          tcp_socket: socket}}
             :noop ->
-                state_data.send.(error(250, "2.0.0"))
-                transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data}
+                command_noop(state, state_data)
             :quit ->
-                state_data.send.(error(221))
-                Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
-                transport.setopts(socket, [{:active, :once}])
-                {:stop, :normal, state_data}
+                command_quit(state, state_data)
             command ->
                 :gen_fsm.send_event(self(), command)
                 transport.setopts(socket, [{:active, :once}])
                 {:next_state, state, state_data}
         end
+    end
+
+    # --------------------------------------------------------------------------
+    # general commands
+    # --------------------------------------------------------------------------
+
+    defp command_noop(state, state_data) do
+        %StateData{socket: socket, transport: transport} = state_data
+        state_data.send.(error(250, "2.0.0"))
+        transport.setopts(socket, [{:active, :once}])
+        {:next_state, state, state_data}
+    end
+
+    defp command_quit(state, state_data) do
+        %StateData{socket: socket, transport: transport} = state_data
+        state_data.send.(error(221))
+        Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
+        transport.setopts(socket, [{:active, :once}])
+        {:stop, :normal, state_data}
     end
 
     # --------------------------------------------------------------------------
