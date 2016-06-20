@@ -25,13 +25,6 @@ config :logger, :file,
 #     host: "127.0.0.1",
 #     port: 514
 
-config :postgrex,
-    hostname: "localhost",
-    username: "myapp",
-    password: "dbpass",
-    database: "myapp",
-    port: 15432
-
 config :skirnir,
 
     # smtp server
@@ -61,6 +54,15 @@ config :skirnir,
     # - Skirnir.Delivery.Storage.Couchbase
     delivery_storage: Skirnir.Delivery.Storage.Postgresql,
 
+    # config to connect to PostgreSQL:
+    backend_postgrex: [
+        hostname: "localhost",
+        username: "myapp",
+        password: "dbpass",
+        database: "myapp",
+        port: 15432
+    ],
+
     # message should be retried in X seconds
     message_retry_in: 5,
 
@@ -72,4 +74,10 @@ config :skirnir,
     tls_cert_file: "config/server.crt",
 
     # IMAP parameters
-    imap_inactivity_timeout: 15
+    imap_inactivity_timeout: 15,
+
+    # type of database for auth access
+    # it should be one of those:
+    # - Skirnir.Auth.Backend.Postgresql
+    # - Skirnir.Auht.Backend.Couchbase
+    auth_backend: Skirnir.Auth.Backend.Postgresql

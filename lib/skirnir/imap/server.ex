@@ -17,6 +17,11 @@ defmodule Skirnir.Imap.Server do
 
     defmodule StateData do
         defstruct id: nil,
+                  # auth data
+                  user: nil,
+                  # info for connection
+                  address: nil,
+                  remote_name: nil,
                   # connection
                   socket: nil,
                   tcp_socket: nil,
@@ -46,6 +51,8 @@ defmodule Skirnir.Imap.Server do
         {:ok, :init, %StateData{id: id,
                                 socket: socket,
                                 transport: transport,
+                                address: address,
+                                remote_name: name,
                                 send: send}}
     end
 
@@ -73,9 +80,7 @@ defmodule Skirnir.Imap.Server do
     end
 
     def noauth({:noop, tag}, state_data) do
-        %StateData{id: id,
-                   socket: socket,
-                   transport: transport} = state_data
+        %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{tag}] NOOP")
         transport.send(socket, "#{tag} OK NOOP completed.\n")
         {:next_state, :noauth, state_data, timeout()}
@@ -102,6 +107,48 @@ defmodule Skirnir.Imap.Server do
         {:next_state, :noauth, state_data, timeout()}
     end
 
+    def noauth({:login, tag, user, pass}, %StateData{tls: true} = state_data) do
+        %StateData{id: id, socket: socket, transport: transport} = state_data
+        case Skirnir.Auth.Backend.check(user, pass) do
+            true ->
+                Logger.info("[imap] [#{id}] user authenticated: #{user}")
+                auth_state_data = %StateData{state_data | user: user}
+                caps = capabilities(auth_state_data)
+                transport.send(socket, "* CAPABILITY #{caps}")
+                transport.send(socket, "#{tag} OK Logged in.\n")
+                {:next_state, :auth, auth_state_data, timeout()}
+            false ->
+                ip = state_data.address
+                Logger.error("[imap] [#{id}] [#{ip}] invalid auth for #{user}")
+                transport.send(socket, "#{tag} NO [AUTHENTICATIONFAILED] Authentication failed.\n")
+                {:next_state, :noauth, state_data, timeout()}
+        end
+    end
+
+    def noauth({:login, tag, user, _pass}, state_data) do
+        %StateData{id: id, socket: socket, transport: transport} = state_data
+        Logger.error("[imap] required TLS for AUTH")
+        transport.send(socket, "* BAD [ALERT] Plaintext authentication not allowed without SSL/TLS.\n")
+        transport.send(socket, "#{tag} NO [PRIVACYREQUIRED] Plaintext authentication disallowed on non-secure (SSL/TLS) connections.")
+        {:next_state, :noauth, state_data, timeout()}
+    end
+
+    def auth(:timeout, state_data) do
+        %StateData{socket: socket, transport: transport, id: id} = state_data
+        Logger.warn("[imap] [#{id}] timeout, closing session")
+        transport.send(socket, "* BYE Disconnected for inactivity.\n")
+        {:stop, :normal, state_data}
+    end
+
+    def auth(whatever, state_data) do
+        case noauth(whatever, state_data) do
+            {:stop, :normal, new_state_data} ->
+                {:stop, :normal, new_state_data}
+            {:next_state, _state, new_state_data, t} ->
+                {:next_state, :auth, new_state_data, t}
+        end
+    end
+
     def handle_info({trans, _port, newdata}, state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         Logger.debug("[imap] received: #{inspect(newdata)}")
@@ -121,6 +168,10 @@ defmodule Skirnir.Imap.Server do
                                          tls: true,
                                          socket: ssl_socket,
                                          tcp_socket: socket}}
+            {:starttls, tag} ->
+                state_data.send.("#{tag} BAD STARTTLS is active right now.\n")
+                transport.setopts(socket, [{:active, :once}])
+                {:next_state, state, state_data, timeout()}
             command ->
                 :gen_fsm.send_event(self(), command)
                 transport.setopts(socket, [{:active, :once}])

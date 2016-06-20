@@ -10,3 +10,9 @@ CREATE TABLE "public"."email" (
     "path" text NOT NULL DEFAULT 'INBOX',
     PRIMARY KEY ("id")
 );
+
+CREATE TABLE "public"."users" (
+    "username" varchar(100) NOT NULL,
+    "password" varchar(100) NOT NULL,
+    PRIMARY KEY ("username")
+);

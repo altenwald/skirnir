@@ -19,6 +19,7 @@ defmodule Skirnir do
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
     Skirnir.Delivery.Storage.init()
+    Skirnir.Auth.Backend.init()
 
     {:ok, supervisor}
   end

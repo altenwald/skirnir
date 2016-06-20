@@ -3,20 +3,16 @@ require Timex
 defmodule Skirnir.Delivery.Storage.Postgresql do
     use Skirnir.Delivery.Storage
 
+    import Skirnir.Backend.Postgresql, only: [timex_to_pgsql: 1,
+                                              pgsql_to_timex: 1]
+
     alias Timex.DateTime
     alias Skirnir.Smtp.Email
 
-    @conn __MODULE__
+    @conn Skirnir.Backend.Postgresql
 
     def init() do
-        {:ok, _} = Application.ensure_all_started(:postgrex)
-        dbconf = Application.get_all_env(:postgrex)
-        child = Postgrex.child_spec(Keyword.merge(dbconf, [
-            types: true,
-            name: @conn,
-            pool: DBConnection.Connection
-        ]))
-        Supervisor.start_child(Skirnir.Supervisor, child)
+        Skirnir.Backend.Postgresql.init()
         Logger.info("[delivery] [postgresql] initiated")
     end
 
@@ -66,13 +62,4 @@ defmodule Skirnir.Delivery.Storage.Postgresql do
         {:error, :notimpl}
     end
 
-    defp timex_to_pgsql(datetime) do
-        {{y,m,d},{h,i,s}} = Timex.to_erlang_datetime(datetime)
-        %Postgrex.Timestamp{day: d, hour: h, min: i, month: m, sec: s, year: y}
-    end
-
-    defp pgsql_to_timex(%Postgrex.Timestamp{day: d, hour: h, min: i, month: m,
-                                            sec: s, year: y}) do
-        Timex.to_datetime {{y,m,d},{h,i,s}}
-    end
 end
