@@ -255,6 +255,11 @@ defmodule Skirnir.Smtp.Server do
         {:stop, :normal, state_data}
     end
 
+    def handle_info({:ssl_closed, _socket}, _state, state_data) do
+        Logger.info("[smtp] connection ssl closed by foreign host")
+        {:stop, :normal, state_data}
+    end
+
     def handle_info({:error, unknown}, _state, state_data) do
         msg = :io_lib.format("~p", [unknown])
         Logger.info("[smtp] stopping worker: #{msg}")
