@@ -4,11 +4,12 @@ defmodule Skirnir.Smtp.Server do
     use GenFSM
     import Skirnir.Smtp.Server.Parser, only: [parse: 1]
     import Skirnir.Smtp.ErrorCodes, only: [error: 1, error: 2, error: 3]
+    import Skirnir.Inet, only: [gethostinfo: 1]
 
     alias Skirnir.Smtp.Server.Storage
     alias Skirnir.Smtp.Server.Queue
     alias Skirnir.Smtp.Email
-    alias Skirnir.Smtp.Tls
+    alias Skirnir.Tls
 
     @behaviour :ranch_protocol
     @timeout 5000
@@ -41,19 +42,8 @@ defmodule Skirnir.Smtp.Server do
         :gen_fsm.start_link(__MODULE__, [ref, socket, transport], [])
     end
 
-    defp gethostinfo(socket) do
-        {:ok, {ip, _port}} = :inet.peername(socket)
-        address = :inet.ntoa(ip)
-        case :inet.gethostbyaddr(ip) do
-            {:ok, {:hostent, name, _, _, _, _}} ->
-                {address, List.to_string(name)}
-            _ ->
-                {address, "unknown"}
-        end
-    end
-
     def init([ref, socket, transport]) do
-        Logger.info("[smtp] start worker")
+        Logger.debug("[smtp] start worker")
         domain = Application.get_env(:skirnir, :domain)
         hostname = Application.get_env(:skirnir, :hostname)
         :gen_fsm.send_event(self(), {:init, ref})

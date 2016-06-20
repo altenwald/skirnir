@@ -34,6 +34,12 @@ config :postgrex,
 
 config :skirnir,
 
+    # smtp server
+    port: 2525,
+
+    # imap4 server
+    port: 1145,
+
     # domain for the emails
     domain: "altenwald.com",
 
@@ -63,4 +69,7 @@ config :skirnir,
 
     # TLS info
     tls_key_file: "config/server.key",
-    tls_cert_file: "config/server.crt"
+    tls_cert_file: "config/server.crt",
+
+    # IMAP parameters
+    imap_inactivity_timeout: 15

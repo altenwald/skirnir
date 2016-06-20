@@ -1,4 +1,4 @@
-defmodule Skirnir.Smtp.Tls do
+defmodule Skirnir.Tls do
 
     @timeout 5000
 
