@@ -11,7 +11,6 @@ defmodule Skirnir.Delivery.Storage.Postgresql do
     def init() do
         {:ok, _} = Application.ensure_all_started(:postgrex)
         dbconf = Application.get_all_env(:postgrex)
-        # TODO implement poolboy, pooler or pool_ring
         child = Postgrex.child_spec(Keyword.merge(dbconf, [
             types: true,
             name: @conn,
