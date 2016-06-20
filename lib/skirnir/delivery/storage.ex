@@ -42,7 +42,7 @@ defmodule Skirnir.Delivery.Storage do
                 {:error, :notimpl}
             end
 
-            defoverridable [init: 0, put: 3, get: 2, delete: 2,
+            defoverridable [init: 0, put: 4, get: 2, delete: 2,
                             get_ids_by_path: 2, get_headers: 2]
         end
     end
