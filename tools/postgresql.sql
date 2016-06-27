@@ -33,8 +33,8 @@ CREATE TABLE emails (
     body text NOT NULL,
     size integer NOT NULL DEFAULT 0,
     flags varchar(50)[] NOT NULL,
-    mailbox_id integer NOT NULL REFERENCES mailboxes(id),
-    user_id integer NOT NULL REFERENCES users(id),
+    mailbox_id integer NOT NULL REFERENCES mailboxes(id) ON DELETE CASCADE,
+    user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     uid integer NOT NULL UNIQUE
 );
 
