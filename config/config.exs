@@ -48,11 +48,11 @@ config :skirnir,
     # path for the local storage (queue)
     queue_storage: "db",
 
-    # type of database for delivery storage
+    # type of database for delivery backend
     # it should be one of those:
-    # - Skirnir.Delivery.Storage.Postgresql
-    # - Skirnir.Delivery.Storage.Couchbase
-    delivery_storage: Skirnir.Delivery.Storage.Postgresql,
+    # - Skirnir.Delivery.Backend.Postgresql
+    # - Skirnir.Delivery.Backend.Couchbase
+    delivery_backend: Skirnir.Delivery.Backend.Postgresql,
 
     # config to connect to PostgreSQL:
     backend_postgrex: [

@@ -2,7 +2,8 @@ defmodule Skirnir.Auth.Backend do
     use Behaviour
 
     @callback init() :: :ok | {:error, atom()}
-    @callback check(String.t, String.t) :: boolean()
+    @callback check(String.t, String.t) :: {:ok, integer()} | {:error, atom()}
+    @callback get_id(String.t) :: integer() | nil
 
     defmacro __using__(_opts) do
         quote do
@@ -13,12 +14,17 @@ defmodule Skirnir.Auth.Backend do
                 :ok
             end
 
-            def check(user, password) do
-                Logger.error("[auth] no backend!")
+            def check(user, _password) do
+                Logger.error("[auth] [#{user}] no backend!")
                 {:error, :notimpl}
             end
 
-            defoverridable [init: 0, check: 2]
+            def get_id(user) do
+                Logger.error("[auth] [#{user}] no backend!")
+                {:error, :notimpl}
+            end
+
+            defoverridable [init: 0, check: 2, get_id: 1]
         end
     end
 
@@ -33,6 +39,10 @@ defmodule Skirnir.Auth.Backend do
 
     def check(user, password) do
         apply(backend(), :check, [user, password])
+    end
+
+    def get_id(user) do
+        apply(backend(), :get_id, [user])
     end
 
 end

@@ -15,5 +15,10 @@ defmodule Skirnir.Imap.Parser do
     def command([tag, "LOGOUT"]), do: {:logout, tag}
     def command([tag, "STARTTLS"]), do: {:starttls, tag}
     def command([tag, "LOGIN", user, pass]), do: {:login, tag, user, pass}
+    def command([tag, "SELECT", mbox]), do: {:select, tag, mbox}
+    def command([tag, "CLOSE"]), do: {:close, tag}
+    def command([tag, "EXAMINE", mbox]), do: {:examine, tag, mbox}
+    def command([tag, "CREATE", mbox]), do: {:create, tag, mbox}
+    def command([tag, "DELETE", mbox]), do: {:delete, tag, mbox}
     def command([tag, command|_rest]), do: {:unknown, tag, command}
 end

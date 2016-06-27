@@ -5,6 +5,7 @@ defmodule Skirnir.Imap do
   @options [port: 1143]
   @protocol Skirnir.Imap.Server
 
+  @folder_sep "/"
 
   @doc """
   Wrap for start ranch listeners
@@ -20,9 +21,13 @@ defmodule Skirnir.Imap do
   end
 
   def port(options) do
-      case Application.get_env(:skirnir, :imap_port, nil) do
-          port when is_integer(port) -> Keyword.put(options, :port, port)
-          nil -> options
-      end
+    case Application.get_env(:skirnir, :imap_port, nil) do
+      port when is_integer(port) -> Keyword.put(options, :port, port)
+      nil -> options
+    end
+  end
+
+  def folder_sep() do
+    Application.get_env(:skirnir, :folder_sep, @folder_sep)
   end
 end

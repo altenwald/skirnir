@@ -1,7 +1,7 @@
 require Logger
 
 defmodule Skirnir.Smtp.Server.Router do
-    alias Skirnir.Delivery.Storage, as: DeliveryStorage
+    alias Skirnir.Delivery.Backend, as: DeliveryBackend
     alias Skirnir.Smtp.Server.Storage, as: QueueStorage
     alias Skirnir.Smtp.Server.Queue
     alias Skirnir.Smtp.Email
@@ -30,7 +30,7 @@ defmodule Skirnir.Smtp.Server.Router do
         # TODO process the delivery rules to set the path or action to be
         #      done in the message
         path = "INBOX"
-        case DeliveryStorage.put(recipient, id, mail, path) do
+        case DeliveryBackend.put(recipient, id, mail, path) do
             :ok ->
                 QueueStorage.delete(id)
             {:error, _error} ->

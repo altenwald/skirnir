@@ -8,7 +8,10 @@ defmodule Skirnir.Backend.Postgresql do
         child = Postgrex.child_spec(Keyword.merge(dbconf, [
             types: true,
             name: @conn,
-            pool: DBConnection.Connection
+            pool: DBConnection.Connection,
+            extensions: [
+                {Skirnir.Backend.Postgresql.Ltree, []}
+            ]
         ]))
         Supervisor.start_child(Skirnir.Supervisor, child)
     end

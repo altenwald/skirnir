@@ -11,19 +11,32 @@ defmodule Skirnir.Auth.Backend.Postgresql do
     def check(user, pass) do
         query =
             """
-            SELECT 1
+            SELECT id
             FROM users
             WHERE username = $1
             AND password = $2
             """
         case Postgrex.query @conn, query, [user, pass] do
-            {:ok, %Postgrex.Result{num_rows: 1}} ->
+            {:ok, %Postgrex.Result{rows: [[id]]}} ->
                 Logger.info("[auth] access granted for #{user}")
-                true
+                {:ok, id}
             _ ->
                 Logger.error("[auth] access denied for #{user}")
                 Logger.debug("[auht] invalid pass: #{pass}")
-                false
+                {:error, :enotfound}
+        end
+    end
+
+    def get_id(user) do
+        query =
+            """
+            SELECT id
+            FROM users
+            WHERE username = $1
+            """
+        case Postgrex.query @conn, query, [user] do
+            {:ok, %Postgrex.Result{rows: [[id]]}} -> id
+            _ -> nil
         end
     end
 

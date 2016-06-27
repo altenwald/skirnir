@@ -18,7 +18,7 @@ defmodule Skirnir do
     opts = [strategy: :one_for_one, name: Skirnir.Supervisor]
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
-    Skirnir.Delivery.Storage.init()
+    Skirnir.Delivery.Backend.init()
     Skirnir.Auth.Backend.init()
 
     {:ok, supervisor}
