@@ -2,7 +2,9 @@
 
 Skirnir is an Email Server developed in 100% pure Elixir and Erlang/OTP.
 
-The main aim is create a complete server (SMTP and IMAP).
+The main aim is create a complete server (SMTP, IMAP and Sieve).
+
+If you want to see our progress you can check our [Trello](https://trello.com/b/4SRbcC8M/skirnir) board.
 
 ## Standars
 
