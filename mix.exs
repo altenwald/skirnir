@@ -4,28 +4,26 @@ defmodule Skirnir.Mixfile do
   def project do
     [app: :skirnir,
      version: "0.0.1",
-     elixir: "~> 1.3.0-dev",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps,
+     deps: deps(),
      test_coverage: [tool: CoberturaCover]]
   end
 
   def application do
-    [applications: [:logger, :ranch, :timex],
+    [applications: [:logger, :ranch, :timex, :erocksdb],
      mod: {Skirnir, []}]
   end
 
   defp deps do
     [{:ranch, "~> 1.0.0"},
-     {:exleveldb, "~> 0.6.0"},
      {:hashids, "~> 2.0"},
-     {:timex, "~> 2.1.4"},
-     {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
-     {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"},
+     {:timex, "~> 3.1.24"},
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},
-     {:postgrex, ">= 0.0.0"},
+     {:postgrex, "~> 1.0.0-rc.1"},
+     {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
      {:json, "~> 0.3.0"},
      # test deps:
      {:cobertura_cover, "~> 0.9.0", only: :test}]

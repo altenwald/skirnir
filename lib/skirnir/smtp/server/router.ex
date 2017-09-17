@@ -20,7 +20,7 @@ defmodule Skirnir.Smtp.Server.Router do
         end
     end
 
-    def process_relay(recipient, id, _mail) do
+    def process_relay(_recipient, id, _mail) do
         # TODO process the email via smtp.client
         Logger.debug("[router] [#{id}] sending to smtp client (relay)")
     end

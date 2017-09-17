@@ -33,7 +33,7 @@ defmodule Skirnir.Smtp.Server.Parser do
     def command(<<"NOOP", _ :: binary()>>, _), do: :noop
 
     def parse_header(data) do
-        case Regex.run(~r/^([\x21-\x39,\x3b-\x7e]+):(.+)$/, data) do
+        case Regex.run(~r/^([\x21-\x39\x3b-\x7e]+):(.+)$/, data) do
             [_, header, content] ->
                 {:header, String.strip(header), String.strip(content)}
             nil ->
