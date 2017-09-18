@@ -1,15 +1,15 @@
 defmodule SkirnirSmtpQueueTest do
   use ExUnit.Case
-  alias Skirnir.Smtp.Queue
+  alias Skirnir.Smtp.Server.Queue
 
   setup do
-    clean
+    clean()
     {:ok, []}
   end
 
   defp clean do
       if Queue.dequeue != nil do
-          clean
+          clean()
       end
   end
 
