@@ -17,7 +17,7 @@ defmodule Skirnir.Mixfile do
   end
 
   defp deps do
-    [{:ranch, "~> 1.0.0"},
+    [{:ranch, "~> 1.2.0"},
      {:hashids, "~> 2.0"},
      {:timex, "~> 3.1.24"},
      {:logger_file_backend, "~> 0.0.7"},
