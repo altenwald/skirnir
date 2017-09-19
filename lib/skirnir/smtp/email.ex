@@ -4,7 +4,6 @@ defmodule Skirnir.Smtp.Email do
     import Skirnir.Smtp.Server.Parser, only: [parse_header: 1]
 
     alias Skirnir.Smtp.Email
-    alias Timex.DateTime
 
     # retry every 4 hours
     @retry_time (4 * 3600)
@@ -31,7 +30,7 @@ defmodule Skirnir.Smtp.Email do
     end
 
     def create(data) do
-        timestamp = DateTime.now()
+        timestamp = Timex.now()
         {headers_raw, [_|content_raw]} =
             data.data
             |> String.split("\r\n")
@@ -62,8 +61,8 @@ defmodule Skirnir.Smtp.Email do
     end
 
     def update_on_fail(mail) do
-        expired_time = DateTime.shift(mail.timestamp, seconds: expires())
-        if Timex.before?(expired_time, Timex.DateTime.now()) do
+        expired_time = Timex.shift(mail.timestamp, seconds: expires())
+        if Timex.before?(expired_time, Timex.now()) do
             {:error, :expired}
         else
             {:ok, %Email{mail | next_try: next_try()}}
@@ -71,7 +70,7 @@ defmodule Skirnir.Smtp.Email do
     end
 
     defp next_try(),
-        do: DateTime.shift(Timex.DateTime.now(), seconds: retry_time())
+        do: Timex.shift(Timex.now(), seconds: retry_time())
 
     defp retry_time(),
         do: Application.get_env(:skirnir, :message_retry_in, @retry_time)

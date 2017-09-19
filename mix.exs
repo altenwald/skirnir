@@ -25,6 +25,7 @@ defmodule Skirnir.Mixfile do
      {:postgrex, "~> 1.0.0-rc.1"},
      {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
      {:json, "~> 0.3.0"},
+     {:poolboy, "~> 1.5.0"},
      # test deps:
      {:cobertura_cover, "~> 0.9.0", only: :test}]
   end

@@ -333,7 +333,7 @@ defmodule Skirnir.Smtp.Server do
         {:next_state, state, state_data}
     end
 
-    defp command_quit(state, state_data) do
+    defp command_quit(_state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         state_data.send.(error(221))
         Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")

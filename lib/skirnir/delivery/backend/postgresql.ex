@@ -5,7 +5,6 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
 
     import Skirnir.Backend.Postgresql, only: [timex_to_pgsql: 1]
 
-    alias Timex.DateTime
     alias Skirnir.Smtp.Email
 
     @conn Skirnir.Backend.Postgresql
@@ -130,7 +129,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
-    defp get_mailbox_parent(user_id, ""), do: {:ok, nil}
+    defp get_mailbox_parent(_user_id, ""), do: {:ok, nil}
     defp get_mailbox_parent(user_id, parent) do
         query = """
                 SELECT id
@@ -208,7 +207,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         result = Postgrex.query @conn, query, [
             id, user_id, email.mail_from,
             Email.get_header(email.headers, "Subject"),
-            timex_to_pgsql(DateTime.now()),
+            timex_to_pgsql(Timex.now()),
             JSON.encode!(email.headers),
             email.content,
             String.length(email.content),
@@ -225,22 +224,22 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
-    def get(user, id) do
+    def get(_user, id) do
         Logger.error("[delivery] [#{id}] no backend!")
         {:error, :notimpl}
     end
 
-    def delete(user, id) do
+    def delete(_user, id) do
         Logger.error("[delivery] [#{id}] no backend!")
         {:error, :notimpl}
     end
 
-    def get_ids_by_path(user, path) do
+    def get_ids_by_path(_user, _path) do
         Logger.error("[delivery] no backend!")
         {:error, :notimpl}
     end
 
-    def get_headers(user, id) do
+    def get_headers(_user, id) do
         Logger.error("[delivery] [#{id}] no backend!")
         {:error, :notimpl}
     end

@@ -1,15 +1,12 @@
 defmodule Skirnir.Backend.AutoGenerate do
-    defmacro __using__(data) do
+    defmacro __using__(_data) do
         quote do
             require Skirnir.Backend.AutoGenerate
             import Skirnir.Backend.AutoGenerate, only: [backend_fun: 2, backend_cfg: 1]
 
-            use Behaviour
-
             defmacro __using__(_opts) do
                 quote do
                     require Logger
-                    @behaviour Skirnir.Delivery.Backend
                 end
             end
         end
