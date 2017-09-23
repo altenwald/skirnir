@@ -27,6 +27,7 @@ defmodule Skirnir.Mixfile do
      {:json, "~> 0.3.0"},
      {:poolboy, "~> 1.5.0"},
      # test deps:
-     {:cobertura_cover, "~> 0.9.0", only: :test}]
+     {:cobertura_cover, "~> 0.9.0", only: :test},
+     {:gen_smtp, "~> 0.12.0", only: :test}]
   end
 end
