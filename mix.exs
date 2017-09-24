@@ -8,7 +8,12 @@ defmodule Skirnir.Mixfile do
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps(),
-     test_coverage: [tool: CoberturaCover]]
+     test_coverage: [tool: ExCoveralls],
+     preferred_cli_env: ["coveralls": :test,
+                         "coveralls.detail": :test,
+                         "coveralls.post": :test,
+                         "coveralls.html": :test,
+                         "coveralls.json": :test]]
   end
 
   def application do
@@ -27,7 +32,7 @@ defmodule Skirnir.Mixfile do
      {:json, "~> 0.3.0"},
      {:poolboy, "~> 1.5.0"},
      # test deps:
-     {:cobertura_cover, "~> 0.9.0", only: :test},
+     {:excoveralls, "~> 0.7.3", only: :test},
      {:gen_smtp, "~> 0.12.0", only: :test}]
   end
 end

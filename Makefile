@@ -17,7 +17,8 @@ clean:
 	-rm -rf deps _build
 
 test: compile
-	mix test --cover
+	#mix test --cover
+	mix coveralls.json
 
 .PHONY: test
 
