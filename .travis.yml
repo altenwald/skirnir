@@ -1,5 +1,5 @@
 language: elixir
-script: "make compile test"
+script: "make bootstrap test"
 install: "sudo pip install codecov"
 after_success: "codecov"
 otp_release: 19.3

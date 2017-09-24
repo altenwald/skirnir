@@ -1,5 +1,9 @@
 all: compile
 
+bootstrap:
+	mix local.rebar --force
+	mix local.hex --force
+
 compile: deps
 	mix compile
 
@@ -14,4 +18,6 @@ clean:
 
 test: compile
 	mix test --cover
+
+.PHONY: test
 
