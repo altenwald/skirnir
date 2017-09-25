@@ -81,7 +81,7 @@ defmodule Skirnir.Smtp.Server do
         %StateData{send: send, hostname: hostname, id: id} = state_data
         # TODO: check host or not, depending on configuration
         Logger.debug("[smtp] [#{id}] received HELO: #{host}")
-        send.("250 #{hostname}\n")
+        send.("250 #{hostname}\r\n")
         {:next_state, :mail_from,
          %StateData{state_data | host: host, tries: @tries}}
     end
@@ -92,18 +92,15 @@ defmodule Skirnir.Smtp.Server do
         Logger.debug("[smtp] [#{id}] received EHLO: #{host}")
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
-        send.(
-            """
-            250-#{hostname}
-            250-SIZE 307200000
-            250-ETRN
-            250-STARTTLS
-            250-AUTH PLAIN LOGIN
-            250-AUTH=PLAIN LOGIN
-            250-ENHANCEDSTATUSCODES
-            250-8BITMIME
-            250 DSN
-            """)
+        send.("250-#{hostname}\r\n" <>
+              "250-SIZE 307200000\r\n" <>
+              "250-ETRN\r\n" <>
+              "250-STARTTLS\r\n" <>
+              "250-AUTH PLAIN LOGIN\r\n" <>
+              "250-AUTH=PLAIN LOGIN\r\n" <>
+              "250-ENHANCEDSTATUSCODES\r\n" <>
+              "250-8BITMIME\r\n" <>
+              "250 DSN\r\n")
         {:next_state, :mail_from,
          %StateData{state_data | host: host, tries: @tries}}
     end
@@ -114,17 +111,14 @@ defmodule Skirnir.Smtp.Server do
         Logger.debug("[smtp] [#{id}] received via TLS EHLO: #{host}")
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
-        send.(
-            """
-            250-#{hostname}
-            250-SIZE 307200000
-            250-ETRN
-            250-AUTH PLAIN LOGIN
-            250-AUTH=PLAIN LOGIN
-            250-ENHANCEDSTATUSCODES
-            250-8BITMIME
-            250 DSN
-            """)
+        send.("250-#{hostname}\r\n" <>
+              "250-SIZE 307200000\r\n" <>
+              "250-ETRN\r\n" <>
+              "250-AUTH PLAIN LOGIN\r\n" <>
+              "250-AUTH=PLAIN LOGIN\r\n" <>
+              "250-ENHANCEDSTATUSCODES\r\n" <>
+              "250-8BITMIME\r\n" <>
+              "250 DSN\r\n")
         {:next_state, :mail_from,
          %StateData{state_data | host: host, tries: @tries}}
     end
@@ -266,6 +260,11 @@ defmodule Skirnir.Smtp.Server do
 
     def handle_info({:ssl_closed, _socket}, _state, state_data) do
         Logger.info("[smtp] connection ssl closed by foreign host")
+        {:stop, :normal, state_data}
+    end
+
+    def handle_info({:tcp_closed, _socket}, _state, state_data) do
+        Logger.info("[smtp] connection tcp closed by foreign host")
         {:stop, :normal, state_data}
     end
 
