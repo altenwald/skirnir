@@ -33,6 +33,7 @@ defmodule Skirnir.Mixfile do
      {:poolboy, "~> 1.5.0"},
      # test deps:
      {:excoveralls, "~> 0.7.3", only: :test},
-     {:gen_smtp, "~> 0.12.0", only: :test}]
+     {:gen_smtp, "~> 0.12.0", only: :test},
+     {:eimap, "~> 0.4.0", git: "https://git.kolab.org/diffusion/EI/eimap.git", only: :test}]
   end
 end
