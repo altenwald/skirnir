@@ -22,6 +22,7 @@ defmodule Skirnir.Mixfile do
      {:hashids, "~> 2.0"},
      {:timex, "~> 2.1.4"},
      {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
+     {:lager, override: true, github: "basho/lager", tag: "3.2.4"},
      {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"},
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},
