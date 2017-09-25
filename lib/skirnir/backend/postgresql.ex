@@ -17,7 +17,7 @@ defmodule Skirnir.Backend.Postgresql do
     end
 
     def timex_to_pgsql(datetime) do
-        {{y,m,d},{h,i,s}} = Timex.to_erlang_datetime(datetime)
+        {{y,m,d},{h,i,s}} = Timex.to_erl(datetime)
         %Postgrex.Timestamp{day: d, hour: h, min: i, month: m, sec: s, year: y}
     end
 

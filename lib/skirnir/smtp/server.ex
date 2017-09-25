@@ -81,8 +81,9 @@ defmodule Skirnir.Smtp.Server do
         %StateData{send: send, hostname: hostname, id: id} = state_data
         # TODO: check host or not, depending on configuration
         Logger.debug("[smtp] [#{id}] received HELO: #{host}")
-        send.("250 #{hostname}\n")
-        {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
+        send.("250 #{hostname}\r\n")
+        {:next_state, :mail_from,
+         %StateData{state_data | host: host, tries: @tries}}
     end
 
     def hello({:hello_extended, host}, %StateData{tls: false} = state_data) do
@@ -91,19 +92,17 @@ defmodule Skirnir.Smtp.Server do
         Logger.debug("[smtp] [#{id}] received EHLO: #{host}")
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
-        send.(
-            """
-            250-#{hostname}
-            250-SIZE 307200000
-            250-ETRN
-            250-STARTTLS
-            250-AUTH PLAIN LOGIN
-            250-AUTH=PLAIN LOGIN
-            250-ENHANCEDSTATUSCODES
-            250-8BITMIME
-            250 DSN
-            """)
-        {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
+        send.("250-#{hostname}\r\n" <>
+              "250-SIZE 307200000\r\n" <>
+              "250-ETRN\r\n" <>
+              "250-STARTTLS\r\n" <>
+              "250-AUTH PLAIN LOGIN\r\n" <>
+              "250-AUTH=PLAIN LOGIN\r\n" <>
+              "250-ENHANCEDSTATUSCODES\r\n" <>
+              "250-8BITMIME\r\n" <>
+              "250 DSN\r\n")
+        {:next_state, :mail_from,
+         %StateData{state_data | host: host, tries: @tries}}
     end
 
     def hello({:hello_extended, host}, state_data) do
@@ -112,18 +111,16 @@ defmodule Skirnir.Smtp.Server do
         Logger.debug("[smtp] [#{id}] received via TLS EHLO: #{host}")
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
-        send.(
-            """
-            250-#{hostname}
-            250-SIZE 307200000
-            250-ETRN
-            250-AUTH PLAIN LOGIN
-            250-AUTH=PLAIN LOGIN
-            250-ENHANCEDSTATUSCODES
-            250-8BITMIME
-            250 DSN
-            """)
-        {:next_state, :mail_from, %StateData{state_data | host: host, tries: @tries}}
+        send.("250-#{hostname}\r\n" <>
+              "250-SIZE 307200000\r\n" <>
+              "250-ETRN\r\n" <>
+              "250-AUTH PLAIN LOGIN\r\n" <>
+              "250-AUTH=PLAIN LOGIN\r\n" <>
+              "250-ENHANCEDSTATUSCODES\r\n" <>
+              "250-8BITMIME\r\n" <>
+              "250 DSN\r\n")
+        {:next_state, :mail_from,
+         %StateData{state_data | host: host, tries: @tries}}
     end
 
     def hello(_whatever, %StateData{tries: 0}=state_data) do
@@ -135,7 +132,8 @@ defmodule Skirnir.Smtp.Server do
 
     def hello(whatever, state_data) do
         %StateData{send: send, tries: tries, id: id} = state_data
-        Logger.error("[smtp] [#{id}] [hello] invalid command: #{inspect(whatever)}")
+        Logger.error("[smtp] [#{id}] [hello] invalid command: " <>
+                     "#{inspect(whatever)}")
         send.(error(503))
         {:next_state, :hello, %StateData{state_data | tries: tries - 1 }}
     end
@@ -148,11 +146,13 @@ defmodule Skirnir.Smtp.Server do
         # TODO: if from is in the same domain, needs auth?
         Logger.info("[smtp] [#{id}] mail from: <#{from}>")
         send.(error(250))
-        {:next_state, :rcpt_to, %StateData{state_data | from: from, tries: @tries}}
+        {:next_state, :rcpt_to,
+         %StateData{state_data | from: from, tries: @tries}}
     end
 
     def mail_from({:error, :bademail}, state_data) do
-        Logger.error("[smtp] [#{state_data.id}] bad email direction in mail_from")
+        Logger.error("[smtp] [#{state_data.id}] bad email direction in " <>
+                     "mail_from")
         state_data.send.(error(501, "5.1.7"))
         {:next_state, :mail_from, state_data}
     end
@@ -166,7 +166,8 @@ defmodule Skirnir.Smtp.Server do
 
     def mail_from(whatever, state_data) do
         %StateData{send: send, tries: tries, id: id} = state_data
-        Logger.error("[smtp] [#{id}] [mail_from] invalid command: #{inspect(whatever)}")
+        Logger.error("[smtp] [#{id}] [mail_from] invalid command: " <>
+                     "#{inspect(whatever)}")
         send.(error(502, "5.5.2"))
         {:next_state, :mail_from, %StateData{state_data | tries: tries - 1 }}
     end
@@ -212,7 +213,8 @@ defmodule Skirnir.Smtp.Server do
 
     def rcpt_to(whatever, state_data) do
         %StateData{send: send, tries: tries, id: id} = state_data
-        Logger.error("[smtp] [#{id}] [rcpt_to] invalid command: #{inspect(whatever)}")
+        Logger.error("[smtp] [#{id}] [rcpt_to] invalid command: " <>
+                     "#{inspect(whatever)}")
         send.(error(554, "5.5.1"))
         {:next_state, :rcpt_to, %StateData{state_data | tries: tries - 1 }}
     end
@@ -237,7 +239,8 @@ defmodule Skirnir.Smtp.Server do
 
     def data(_whatever, state_data) do
         %StateData{send: send, tries: tries} = state_data
-        Logger.error("[smtp] [data] trying to send another command, maybe hacking?")
+        Logger.error("[smtp] [data] trying to send another command, " <>
+                     "maybe hacking?")
         send.(error(502, "5.5.2"))
         {:next_state, :data, %StateData{state_data | tries: tries - 1 }}
     end
@@ -257,6 +260,11 @@ defmodule Skirnir.Smtp.Server do
 
     def handle_info({:ssl_closed, _socket}, _state, state_data) do
         Logger.info("[smtp] connection ssl closed by foreign host")
+        {:stop, :normal, state_data}
+    end
+
+    def handle_info({:tcp_closed, _socket}, _state, state_data) do
+        Logger.info("[smtp] connection tcp closed by foreign host")
         {:stop, :normal, state_data}
     end
 
@@ -333,10 +341,11 @@ defmodule Skirnir.Smtp.Server do
         {:next_state, state, state_data}
     end
 
-    defp command_quit(state, state_data) do
+    defp command_quit(_state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         state_data.send.(error(221))
-        Logger.info("[smtp] [#{state_data.id}] connection closed by foreign host")
+        Logger.info("[smtp] [#{state_data.id}] connection closed by " <>
+                    "foreign host")
         transport.setopts(socket, [{:active, :once}])
         {:stop, :normal, state_data}
     end
@@ -344,7 +353,8 @@ defmodule Skirnir.Smtp.Server do
     # --------------------------------------------------------------------------
     # terminate
     # --------------------------------------------------------------------------
-    def terminate(_reason, %StateData{socket: socket, transport: transport}) do
+    def terminate(_reason, _state_name,
+                  %StateData{socket: socket, transport: transport}) do
         transport.close(socket)
     end
 

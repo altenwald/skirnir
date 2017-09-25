@@ -31,6 +31,7 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     def init() do
         storage = Application.get_env(:skirnir, :queue_storage, "db")
+                  |> String.to_charlist
         {:ok, db} = open(storage)
         Logger.debug("[queue-storage] init #{name()}: #{inspect(db)}")
         db
@@ -44,5 +45,4 @@ defmodule Skirnir.Smtp.Server.Storage do
     end
 
     def get_db(), do: Agent.get(__MODULE__, &(&1))
-
 end

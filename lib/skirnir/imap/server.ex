@@ -66,7 +66,7 @@ defmodule Skirnir.Imap.Server do
         :ok = :ranch.accept_ack(ref)
         Logger.debug("[imap] [#{id}] accepted connection")
         caps = capabilities(state_data)
-        transport.send(socket, "* OK [#{caps}] Skirnir ready.\n")
+        transport.send(socket, "* OK [#{caps}] Skirnir ready.\r\n")
         transport.setopts(socket, [{:active, :once}])
         {:next_state, :noauth, state_data, timeout()}
     end
@@ -76,37 +76,37 @@ defmodule Skirnir.Imap.Server do
                    socket: socket,
                    transport: transport} = state_data
         caps = capabilities(state_data)
-        Logger.debug("[imap] [#{id}] [#{tag}] CAPABILITY: #{caps}")
-        transport.send(socket, "* CAPABILITY #{caps}\n")
-        transport.send(socket, "#{tag} OK Pre-login capabilities listed, post-login capabilities have more.\n")
+        Logger.debug("[imap] [#{id}] [#{tag}] #{caps}")
+        transport.send(socket, "* #{caps}\r\n")
+        transport.send(socket, "#{tag} OK Pre-login capabilities listed, post-login capabilities have more.\r\n")
         {:next_state, :noauth, state_data, timeout()}
     end
 
     def noauth({:noop, tag}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{tag}] NOOP")
-        transport.send(socket, "#{tag} OK NOOP completed.\n")
+        transport.send(socket, "#{tag} OK NOOP completed.\r\n")
         {:next_state, :noauth, state_data, timeout()}
     end
 
     def noauth({:logout, tag}, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.info("[imap] [#{id}] [#{tag}] request logout")
-        transport.send(socket, "#{tag} OK Logout completed.\n")
+        transport.send(socket, "#{tag} OK Logout completed.\r\n")
         {:stop, :normal, state_data}
     end
 
     def noauth(:timeout, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.warn("[imap] [#{id}] timeout, closing session")
-        transport.send(socket, "* BYE Disconnected for inactivity.\n")
+        transport.send(socket, "* BYE Disconnected for inactivity.\r\n")
         {:stop, :normal, state_data}
     end
 
     def noauth({:unknown, tag, command}, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.error("[imap] [#{id}] [#{tag}] command unknown: #{command}")
-        transport.send(socket, "#{tag} BAD Error in IMAP command received by server.\n")
+        transport.send(socket, "#{tag} BAD Error in IMAP command received by server.\r\n")
         {:next_state, :noauth, state_data, timeout()}
     end
 
@@ -117,14 +117,14 @@ defmodule Skirnir.Imap.Server do
                 Logger.info("[imap] [#{id}] user authenticated: #{user}")
                 auth_state_data = %StateData{state_data | user: user, user_id: user_id}
                 caps = capabilities(auth_state_data)
-                transport.send(socket, "* CAPABILITY #{caps}")
-                transport.send(socket, "#{tag} OK Logged in.\n")
+                transport.send(socket, "* #{caps}\r\n")
+                transport.send(socket, "#{tag} OK Logged in.\r\n")
                 {:next_state, :auth, auth_state_data, timeout()}
             {:error, :enotfound} ->
                 ip = state_data.address
                 Logger.error("[imap] [#{id}] [#{ip}] invalid auth for #{user}")
                 transport.send(socket,
-                    "#{tag} NO [AUTHENTICATIONFAILED] Authentication failed.\n")
+                    "#{tag} NO [AUTHENTICATIONFAILED] Authentication failed.\r\n")
                 {:next_state, :noauth, state_data, timeout()}
         end
     end
@@ -132,11 +132,8 @@ defmodule Skirnir.Imap.Server do
     def noauth({:login, tag, user, _pass}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.error("[imap] [#{id}] [#{user}] [#{tag}] required TLS for AUTH")
-        msg =
-            """
-            * BAD [ALERT] Plaintext authentication not allowed without SSL/TLS.
-            #{tag} NO [PRIVACYREQUIRED] Plaintext authentication disallowed on non-secure (SSL/TLS) connections.
-            """
+        msg = "* BAD [ALERT] Plaintext authentication not allowed without SSL/TLS.\r\n" <>
+              "#{tag} NO [PRIVACYREQUIRED] Plaintext authentication disallowed on non-secure (SSL/TLS) connections.\r\n"
         transport.send socket, msg
         {:next_state, :noauth, state_data, timeout()}
     end
@@ -150,20 +147,18 @@ defmodule Skirnir.Imap.Server do
                     Skirnir.Delivery.Backend.set_unrecent(user_id, id, msg_recent)
                 end
                 selected_state_data = %StateData{state_data | mbox_select: id}
-                msg = """
-                      * #{msg_exists} EXISTS
-                      * #{msg_recent} RECENT
-                      #{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]
-                      * OK [UIDNEXT #{uid_next}]
-                      * FLAGS (#{flags()})
-                      * OK [PERMANENTFLAGS (#{flags()} \\*)] Limited
-                      #{tag} OK [READ-WRITE] SELECT completed
-                      """
+                msg = "* #{msg_exists} EXISTS\r\n" <>
+                      "* #{msg_recent} RECENT\r\n" <>
+                      "#{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]\r\n" <>
+                      "* OK [UIDNEXT #{uid_next}]\r\n" <>
+                      "* FLAGS (#{flags()})\r\n" <>
+                      "* OK [PERMANENTFLAGS (#{flags()} \\*)] Limited\r\n" <>
+                      "#{tag} OK [READ-WRITE] SELECT completed\r\n"
                 transport.send(socket, msg)
                 {:next_state, :selected, selected_state_data, timeout()}
             {:error, :enopath} ->
                 Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
-                msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\n"
+                msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
                 {:next_state, :auth, state_data, timeout()}
             {:error, error} ->
@@ -178,20 +173,18 @@ defmodule Skirnir.Imap.Server do
         case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
             {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
                 selected_state_data = %StateData{state_data | mbox_select: mailbox_id}
-                msg = """
-                      * #{msg_exists} EXISTS
-                      * #{msg_recent} RECENT
-                      #{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]
-                      * OK [UIDNEXT #{uid_next}]
-                      * FLAGS (#{flags()})
-                      * OK [PERMANENTFLAGS (#{flags()} \\*)] Limited
-                      #{tag} OK [READ-ONLY] EXAMINE completed
-                      """
+                msg = "* #{msg_exists} EXISTS\r\n" <>
+                      "* #{msg_recent} RECENT\r\n" <>
+                      "#{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]\r\n" <>
+                      "* OK [UIDNEXT #{uid_next}]\r\n" <>
+                      "* FLAGS (#{flags()})\r\n" <>
+                      "* OK [PERMANENTFLAGS (#{flags()} \\*)] Limited\r\n" <>
+                      "#{tag} OK [READ-ONLY] EXAMINE completed\r\n"
                 transport.send(socket, msg)
                 {:next_state, :selected, selected_state_data, timeout()}
             {:error, :enopath} ->
                 Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
-                msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\n"
+                msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
                 {:next_state, :auth, state_data, timeout()}
             {:error, error} ->
@@ -207,16 +200,16 @@ defmodule Skirnir.Imap.Server do
         case Skirnir.Delivery.Backend.create_mailbox(user_id, mbox) do
             {:ok, mailbox_id} ->
                 Logger.debug("[imap] [#{id}] [#{user}] created (#{mailbox_id}) #{mbox}")
-                transport.send(socket, "#{tag} OK CREATE completed\n")
+                transport.send(socket, "#{tag} OK CREATE completed\r\n")
             {:error, :enoparent} ->
                 Logger.error("[imap] [#{id}] [#{user}] parent not found for #{mbox}")
-                transport.send(socket, "#{tag} NO [CANNOT] Parent folder isn't created\n")
+                transport.send(socket, "#{tag} NO [CANNOT] Parent folder isn't created\r\n")
             {:error, :eduplicated} ->
                 Logger.error("[imap] [#{id}] [#{user}] try create a duplicate mailbox: #{mbox}")
-                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox already exists\n")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox already exists\r\n")
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] try createing #{mbox}: #{error}")
-                transport.send(socket, "#{tag} BAD Unknown error in server\n")
+                transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:next_state, :auth, state_data, timeout()}
     end
@@ -227,16 +220,16 @@ defmodule Skirnir.Imap.Server do
         case Skirnir.Delivery.Backend.delete_mailbox(user_id, mbox) do
             :ok ->
                 Logger.debug("[imap] [#{id}] [#{user}] deleted #{mbox}")
-                transport.send(socket, "#{tag} OK Delete completed.\n")
+                transport.send(socket, "#{tag} OK Delete completed.\r\n")
             {:error, :enotfound} ->
                 Logger.debug("[imap] [#{id}] [#{user}] not found #{mbox} to delete")
-                transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox doesn't exist: #{mbox}\n")
+                transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox doesn't exist: #{mbox}\r\n")
             {:error, :enoempty} ->
                 Logger.debug("[imap] [#{id}] [#{user}] try deleting mailbox no empty: #{mbox}")
-                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox has children, delete them first\n")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox has children, delete them first\r\n")
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] try deleting #{mbox}: #{error}")
-                transport.send(socket, "#{tag} BAD Unknown error in server\n")
+                transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:next_state, :auth, state_data, timeout()}
     end
@@ -253,7 +246,7 @@ defmodule Skirnir.Imap.Server do
     def selected({:select, tag, mbox}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
-        msg = "* OK [CLOSED] Previous mailbox closed.\n"
+        msg = "* OK [CLOSED] Previous mailbox closed.\r\n"
         transport.send(socket, msg)
         auth({:select, tag, mbox}, %StateData{state_data | mbox_select: nil})
     end
@@ -262,7 +255,7 @@ defmodule Skirnir.Imap.Server do
         %StateData{id: id, socket: socket, mbox_select: mbox,
                    transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
-        msg = "#{tag} OK Close completed.\n"
+        msg = "#{tag} OK Close completed.\r\n"
         transport.send(socket, msg)
         {:next_state, :auth, %StateData{state_data | mbox_select: nil}}
     end
@@ -276,6 +269,14 @@ defmodule Skirnir.Imap.Server do
         end
     end
 
+    def handle_info({:tcp_closed, _socket}, state, state_data) do
+        Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
+        {:stop, :normal, state_data}
+    end
+    def handle_info({:ssl_closed, _socket}, state, state_data) do
+        Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
+        {:stop, :normal, state_data}
+    end
     def handle_info({trans, _port, newdata}, state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         Logger.debug("[imap] received: #{inspect(newdata)}")
@@ -283,7 +284,7 @@ defmodule Skirnir.Imap.Server do
             {:starttls, tag} when trans == :tcp ->
                 Logger.debug("[imap] [#{state_data.id}] changing to TLS")
                 transport.setopts(socket, [{:active, :false}])
-                state_data.send.("#{tag} OK Begin TLS negotiation now.\n")
+                state_data.send.("#{tag} OK Begin TLS negotiation now.\r\n")
                 {:ok, ssl_socket} = Tls.accept(socket)
                 transport = :ranch_ssl
                 transport.setopts(ssl_socket, [{:active, :once}])
@@ -296,7 +297,7 @@ defmodule Skirnir.Imap.Server do
                                          socket: ssl_socket,
                                          tcp_socket: socket}, timeout()}
             {:starttls, tag} ->
-                state_data.send.("#{tag} BAD STARTTLS is active right now.\n")
+                state_data.send.("#{tag} BAD STARTTLS is active right now.\r\n")
                 transport.setopts(socket, [{:active, :once}])
                 {:next_state, state, state_data, timeout()}
             command ->
@@ -309,7 +310,8 @@ defmodule Skirnir.Imap.Server do
     # --------------------------------------------------------------------------
     # terminate
     # --------------------------------------------------------------------------
-    def terminate(_reason, %StateData{socket: socket, transport: transport}) do
+    def terminate(_reason, _state_name,
+                  %StateData{socket: socket, transport: transport}) do
         transport.close(socket)
     end
 
@@ -324,7 +326,7 @@ defmodule Skirnir.Imap.Server do
         "ENABLE " <>
         "IDLE " <>
         "STARTTLS " <>
-        "LOGINDISABLED "
+        "LOGINDISABLED"
     end
 
     defp capabilities(%StateData{tls: true}) do
@@ -337,7 +339,7 @@ defmodule Skirnir.Imap.Server do
         "ID " <>
         "ENABLE " <>
         "IDLE " <>
-        "AUTH=LOGIN "
+        "AUTH=LOGIN"
     end
 
     def flags() do
@@ -346,7 +348,7 @@ defmodule Skirnir.Imap.Server do
     end
 
     def unseen_info(nil), do: ""
-    def unseen_info(unseen), do: "* OK [UNSEEN #{unseen}]\n"
+    def unseen_info(unseen), do: "* OK [UNSEEN #{unseen}]\r\n"
 
     defp timeout() do
         Application.get_env(:skirnir, :imap_inactivity_timeout, @timeout) * 1000

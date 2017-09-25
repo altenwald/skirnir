@@ -4,7 +4,7 @@ defmodule Skirnir.Smtp.Server.Queue do
     use GenServer
 
     alias Skirnir.Smtp.Server.Storage
-    alias Skirnir.Smtp.Server.Router
+    alias Skirnir.Smtp.Server.Queue.Worker
 
     @timeout 1000
     @threshold 50
@@ -27,44 +27,54 @@ defmodule Skirnir.Smtp.Server.Queue do
 
     def init([]) do
         case Storage.keys do
-            [] -> {:ok, []}
-            keys -> {:ok, Enum.map(keys, &({&1,nil})), @timeout}
+            [] ->
+                {:ok, {nil, []}}
+            keys ->
+                timer = Process.send_after(self(), :process, @timeout)
+                {:ok, {timer, Enum.map(keys, &({&1, nil}))}}
         end
     end
 
-    def handle_call({:enqueue, id}, _from, queue) do
+    defp add_timer(nil, []), do: {nil, []}
+
+    defp add_timer(nil, queue) do
+        {Process.send_after(self(), :process, @timeout), queue}
+    end
+
+    defp add_timer(timer, []) do
+        Process.cancel_timer(timer)
+        {nil, []}
+    end
+
+    defp add_timer(timer, queue), do: {timer, queue}
+
+    def handle_call({:enqueue, id}, _from, {timer, queue}) do
         Logger.info("[queue] [#{id}] enqueued")
-        {:reply, :ok, queue ++ [{id,nil}], @timeout}
+        {:reply, :ok, add_timer(timer, queue ++ [{id, nil}])}
     end
 
-    def handle_call({:enqueue, id, next_try}, _from, queue) do
+    def handle_call({:enqueue, id, next_try}, _from, {timer, queue}) do
         Logger.info("[queue] [#{id}] enqueued")
-        {:reply, :ok, queue ++ [{id,next_try}], @timeout}
+        {:reply, :ok, add_timer(timer, queue ++ [{id,next_try}])}
     end
 
-    def handle_call(:dequeue, _from, []), do: {:reply, :nil, []}
+    def handle_call(:dequeue, _from, {timer, []}), do:
+        {:reply, :nil, add_timer(timer, [])}
 
-    def handle_call(:dequeue, _from, [{mail_id,_}|queue]) do
-        case queue do
-            [] -> {:reply, mail_id, queue}
-            _ -> {:reply, mail_id, queue, @timeout}
-        end
+    def handle_call(:dequeue, _from, {timer, [{mail_id,_}|queue]}) do
+        {:reply, mail_id, add_timer(timer, queue)}
     end
 
-    def handle_info(:timeout, prev_queue) do
+    def handle_info(:process, {_timer, prev_queue}) do
         not_try = Enum.filter(prev_queue, fn({_id,next_try}) ->
-            next_try != nil and Timex.before?(Timex.DateTime.now(), next_try)
+            next_try != nil and Timex.before?(Timex.now(), next_try)
         end)
         {elements, queue} = Enum.split(prev_queue -- not_try, threshold())
-        elements
-        |> Enum.each(fn({mail_id,_next_try}) ->
-            spawn fn -> Router.process(mail_id) end
+        Enum.each(elements, fn({mail_id, _next_try}) ->
+            Worker.process(mail_id)
         end)
         queue_final = queue ++ not_try
-        case queue_final do
-            [] -> {:noreply, queue_final}
-            _ -> {:noreply, queue_final, @timeout}
-        end
+        {:noreply, add_timer(nil, queue_final)}
     end
 
     defp threshold(),

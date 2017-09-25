@@ -19,6 +19,10 @@ defmodule Skirnir.Smtp do
                            {:reuseaddr, true}])
   end
 
+  def stop() do
+    :ok = :ranch.stop_listener(:tcp_smtp)
+  end
+
   def port(options) do
       case Application.get_env(:skirnir, :smtp_port, nil) do
           port when is_integer(port) -> Keyword.put(options, :port, port)
