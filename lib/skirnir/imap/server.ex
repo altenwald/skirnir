@@ -269,11 +269,11 @@ defmodule Skirnir.Imap.Server do
         end
     end
 
-    def handle_info({:tcp_closed, _socket}, state, state_data) do
+    def handle_info({:tcp_closed, _socket}, _state, state_data) do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
-    def handle_info({:ssl_closed, _socket}, state, state_data) do
+    def handle_info({:ssl_closed, _socket}, _state, state_data) do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end

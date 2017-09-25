@@ -8,7 +8,7 @@ defmodule Skirnir.Smtp.Server.Storage.Leveldb do
     end
 
     def open(storage) do
-        {:ok, db} = Exleveldb.open storage, create_if_missing: true
+        {:ok, _db} = Exleveldb.open storage, create_if_missing: true
     end
 
     def keys() do

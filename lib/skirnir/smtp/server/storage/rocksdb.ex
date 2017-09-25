@@ -8,7 +8,7 @@ defmodule Skirnir.Smtp.Server.Storage.Rocksdb do
     end
 
     def open(storage) do
-        {:ok, db} = :erocksdb.open(storage, [create_if_missing: true], [])
+        {:ok, _db} = :erocksdb.open(storage, [create_if_missing: true], [])
     end
 
     def keys() do

@@ -14,7 +14,7 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     def start_link do
         Logger.info("[queue-storage] starting #{name()} storage")
-        Agent.start_link(&init/0, name: __MODULE__)
+        Agent.start_link(&init_agent/0, name: __MODULE__)
     end
 
     def stop do
@@ -29,7 +29,7 @@ defmodule Skirnir.Smtp.Server.Storage do
     backend_fun :delete, [mail_id]
     backend_fun :put, [mail_id, mail]
 
-    def init() do
+    def init_agent() do
         storage = Application.get_env(:skirnir, :queue_storage, "db")
                   |> String.to_charlist
         {:ok, db} = open(storage)

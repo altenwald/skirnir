@@ -25,11 +25,13 @@ defmodule Skirnir.Mixfile do
     [{:ranch, "~> 1.4.0"},
      {:hashids, "~> 2.0"},
      {:json, "~> 1.0.2"},
+     {:timex, "~> 3.1.24"},
 
      # leveldb backend:
      {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
      {:lager, override: true, github: "basho/lager", tag: "3.2.4"},
      {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"},
+     {:exleveldb, "~> 0.6.0"},
 
      # rocksdb backend:
      {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
