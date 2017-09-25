@@ -310,7 +310,8 @@ defmodule Skirnir.Imap.Server do
     # --------------------------------------------------------------------------
     # terminate
     # --------------------------------------------------------------------------
-    def terminate(_reason, %StateData{socket: socket, transport: transport}) do
+    def terminate(_reason, _state_name,
+                  %StateData{socket: socket, transport: transport}) do
         transport.close(socket)
     end
 
