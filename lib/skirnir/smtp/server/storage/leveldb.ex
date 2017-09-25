@@ -7,7 +7,9 @@ defmodule Skirnir.Smtp.Server.Storage.Leveldb do
         "leveldb"
     end
 
-    def open(storage) do
+    def open(storage) when is_list(storage), do:
+        open(List.to_string(storage))
+    def open(storage) when is_binary(storage) do
         {:ok, _db} = Exleveldb.open storage, create_if_missing: true
     end
 

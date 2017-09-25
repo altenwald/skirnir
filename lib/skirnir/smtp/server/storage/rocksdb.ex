@@ -7,6 +7,8 @@ defmodule Skirnir.Smtp.Server.Storage.Rocksdb do
         "rocksdb"
     end
 
+    def open(storage) when is_binary(storage), do:
+        open(String.to_charlist(storage))
     def open(storage) do
         {:ok, _db} = :erocksdb.open(storage, [create_if_missing: true], [])
     end

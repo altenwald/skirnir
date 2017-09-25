@@ -6,7 +6,7 @@ defmodule Skirnir.Smtp.Server.Storage do
     @alphabet "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     @min_len 12
 
-    @default_backend Skirnir.Smtp.Server.Storage.Leveldb
+    @default_backend Skirnir.Smtp.Server.Storage.Rocksdb
 
     use Skirnir.Backend.AutoGenerate
 
@@ -31,7 +31,6 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     def init_agent() do
         storage = Application.get_env(:skirnir, :queue_storage, "db")
-                  |> String.to_charlist
         {:ok, db} = open(storage)
         Logger.debug("[queue-storage] init #{name()}: #{inspect(db)}")
         db
