@@ -4,10 +4,10 @@ defmodule Skirnir.Mixfile do
   def project do
     [app: :skirnir,
      version: "0.0.1",
-     elixir: "~> 1.3.0-dev",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps,
+     deps: deps(),
      test_coverage: [tool: CoberturaCover]]
   end
 
