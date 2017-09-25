@@ -54,6 +54,12 @@ config :skirnir,
     # - Skirnir.Delivery.Backend.Couchbase
     delivery_backend: Skirnir.Delivery.Backend.Postgresql,
 
+    # type of queue backend
+    # it should be one of those:
+    # - Skirnir.Smtp.Server.Storage.Leveldb
+    # - Skirnir.Smtp.Server.Storage.Rocksdb
+    queue_backend: Skirnir.Smtp.Server.Storage.Rocksdb,
+
     # config to connect to PostgreSQL:
     backend_postgrex: [
         hostname: "localhost",
