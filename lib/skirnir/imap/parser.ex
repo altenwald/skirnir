@@ -8,7 +8,9 @@ defmodule Skirnir.Imap.Parser do
         |> command()
     end
 
-    def command_upcase([tag,command|rest]), do: [tag,String.upcase(command)|rest]
+    def command_upcase([tag, command|rest]) do
+        [tag, String.upcase(command)|rest]
+    end
 
     def command([tag, "CAPABILITY"]), do: {:capability, tag}
     def command([tag, "NOOP"]), do: {:noop, tag}
@@ -20,5 +22,15 @@ defmodule Skirnir.Imap.Parser do
     def command([tag, "EXAMINE", mbox]), do: {:examine, tag, mbox}
     def command([tag, "CREATE", mbox]), do: {:create, tag, mbox}
     def command([tag, "DELETE", mbox]), do: {:delete, tag, mbox}
+    def command([tag, "STATUS", mbox|items]) do
+        items = for item <- items do
+            item
+            |> String.trim()
+            |> String.trim(")")
+            |> String.trim("(")
+            |> String.trim()
+        end
+        {:status, tag, mbox, items}
+    end
     def command([tag, command|_rest]), do: {:unknown, tag, command}
 end

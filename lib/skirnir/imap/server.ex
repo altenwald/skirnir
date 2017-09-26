@@ -138,6 +138,15 @@ defmodule Skirnir.Imap.Server do
         {:next_state, :noauth, state_data, timeout()}
     end
 
+    def noauth(command, state_data) do
+        [cmd, tag|_] = Tuple.to_list(command)
+        %StateData{id: id, socket: socket, transport: transport} = state_data
+        Logger.error("[imap] [#{id}] command unknow: #{cmd}")
+        msg = "#{tag} BAD Error in IMAP command received by server.\r\n"
+        transport.send socket, msg
+        {:stop, :normal, state_data}
+    end
+
     def auth({:select, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] selecting #{mbox}")
@@ -220,7 +229,7 @@ defmodule Skirnir.Imap.Server do
         case Skirnir.Delivery.Backend.delete_mailbox(user_id, mbox) do
             :ok ->
                 Logger.debug("[imap] [#{id}] [#{user}] deleted #{mbox}")
-                transport.send(socket, "#{tag} OK Delete completed.\r\n")
+                transport.send(socket, "#{tag} OK DELETE completed.\r\n")
             {:error, :enotfound} ->
                 Logger.debug("[imap] [#{id}] [#{user}] not found #{mbox} to delete")
                 transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox doesn't exist: #{mbox}\r\n")
@@ -232,6 +241,34 @@ defmodule Skirnir.Imap.Server do
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:next_state, :auth, state_data, timeout()}
+    end
+
+    def auth({:status, tag, mbox, items}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
+        case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
+            {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
+                info = List.foldl(items, "",
+                    fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} ";
+                      ("RECENT", res) -> res <> "RECENT #{msg_recent} ";
+                      ("UIDNEXT", res) -> res <> "UIDNEXT #{uid_next} ";
+                      ("UIDVALIDITY", res) -> res <> "UIDVALIDITY #{uid_validity} ";
+                      ("UNSEEN", res) -> res <> "UNSEEN #{unseen} ";
+                      (_, res) -> res
+                    end) |> String.rstrip()
+                Logger.debug("[imap] [#{id}] [#{user}] status #{mbox}: #{info}")
+                transport.send(socket, "* STATUS #{mbox} (#{info})\r\n" <>
+                                       "#{tag} OK STATUS completed\r\n")
+                {:next_state, :auth, state_data, timeout()}
+            {:error, :enopath} ->
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
+                msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
+                transport.send(socket, msg)
+                {:next_state, :auth, state_data, timeout()}
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                {:stop, :normal, state_data}
+        end
     end
 
     def auth(whatever, state_data) do

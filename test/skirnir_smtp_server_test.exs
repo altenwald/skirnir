@@ -9,6 +9,6 @@ defmodule SkirnirSmtpServerTest do
     "2.0.0 Ok: queued as " <> _id = :gen_smtp_client.send_blocking(message, opts)
 
     # clean the queue for the message sent
-    Skirnir.Smtp.Server.Queue.dequeue()
+    assert nil != Skirnir.Smtp.Server.Queue.dequeue()
   end
 end
