@@ -35,7 +35,7 @@ defmodule Skirnir.Delivery.Backend.Dummy do
     def create_mailbox(@user_id, _), do: {:error, :enoparent}
     def create_mailbox(_, _), do: {:error, :eduplicated}
 
-    def delete_mailbox(@user_id, @mailbox), do: :ok
+    def delete_mailbox(@user_id, "INBOX"), do: :ok
     def delete_mailbox(@user_id, _), do: {:error, :enotfound}
     def delete_mailbox(_, _), do: {:error, :enoempty}
 
