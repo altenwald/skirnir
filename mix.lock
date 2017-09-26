@@ -5,7 +5,7 @@
   "db_connection": {:hex, :db_connection, "1.1.2", "2865c2a4bae0714e2213a0ce60a1b12d76a6efba0c51fbda59c9ab8d1accc7a8", [:mix], [{:connection, "~> 1.0.2", [hex: :connection, repo: "hexpm", optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, repo: "hexpm", optional: true]}, {:sbroker, "~> 1.0", [hex: :sbroker, repo: "hexpm", optional: true]}], "hexpm"},
   "decimal": {:hex, :decimal, "1.4.0", "fac965ce71a46aab53d3a6ce45662806bdd708a4a95a65cde8a12eb0124a1333", [:mix], [], "hexpm"},
   "eimap": {:git, "https://git.kolab.org/diffusion/EI/eimap.git", "b227b96abdf113ed6554aeeb9de7f0edc59d5f2c", []},
-  "eleveldb": {:git, "https://github.com/basho/eleveldb.git", "a36dbd609c742d9ad572c38c3464730da3419248", [tag: "2.1.0"]},
+  "eleveldb": {:git, "https://github.com/basho/eleveldb.git", "3c8b26e99d883260d9ac922c0381ccaf41644025", [tag: "2.2.19"]},
   "erocksdb": {:git, "https://github.com/leo-project/erocksdb.git", "e6dfa134d2262589b948ee4c7e959d99762638c1", [tag: "4.13.5"]},
   "excoveralls": {:hex, :excoveralls, "0.7.3", "6c05cc452e6ebfc347fccc0de7339e9bc1ed8678c52765353303fa0d2c44c70d", [:mix], [{:exjsx, ">= 3.0.0", [hex: :exjsx, repo: "hexpm", optional: false]}, {:hackney, ">= 0.12.0", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm"},
   "exjsx": {:hex, :exjsx, "4.0.0", "60548841e0212df401e38e63c0078ec57b33e7ea49b032c796ccad8cde794b5c", [:mix], [{:jsx, "~> 2.8.0", [hex: :jsx, repo: "hexpm", optional: false]}], "hexpm"},

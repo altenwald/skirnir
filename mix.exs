@@ -30,7 +30,7 @@ defmodule Skirnir.Mixfile do
      # leveldb backend:
      {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
      {:lager, override: true, github: "basho/lager", tag: "3.2.4"},
-     {:eleveldb, github: "basho/eleveldb", tag: "2.1.0"},
+     {:eleveldb, override: true, github: "basho/eleveldb", tag: "2.2.19", manager: :rebar},
      {:exleveldb, "~> 0.6.0"},
 
      # rocksdb backend:
