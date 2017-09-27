@@ -247,7 +247,7 @@ defmodule Skirnir.Imap.Server do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
         case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
-            {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
+            {:ok, _id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
                 info = List.foldl(items, "",
                     fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} ";
                       ("RECENT", res) -> res <> "RECENT #{msg_recent} ";

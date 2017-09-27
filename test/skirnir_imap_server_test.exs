@@ -29,6 +29,28 @@ defmodule SkirnirImapServerTest do
     :ok = :eimap.disconnect(imap)
   end
 
+  test "folder select" do
+    imap_server_args = [{:host, {127,0,0,1}},
+                        {:port, 1145}]
+    {:ok, imap} = :eimap.start_link(imap_server_args)
+    :ok = :eimap.starttls(imap, self(), make_ref())
+    :ok = :eimap.login(imap, self(), make_ref(), 'alice', 'alice')
+    :ok = :eimap.switch_folder(imap, self(), make_ref(), 'INBOX')
+    :ok = :eimap.connect(imap)
+    assert :ok = recv(:starttls_complete)
+    assert :ok = recv(:authed)
+    assert :ok = recv([writeable: true,
+                       permanent_flags: ["\\Answered", "\\Flagged", "\\Deleted",
+                                         "\\Seen", "\\Draft", "\\*"],
+                       flags: ["\\Answered", "\\Flagged", "\\Deleted", "\\Seen",
+                               "\\Draft"],
+                       uid_next: 123456789,
+                       uid_validity: 1,
+                       recent: 10,
+                       exists: 100])
+    :ok = :eimap.disconnect(imap)
+  end
+
   test "folder status" do
     imap_server_args = [{:host, {127,0,0,1}},
                         {:port, 1145}]
