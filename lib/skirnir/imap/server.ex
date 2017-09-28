@@ -1,7 +1,7 @@
 require Logger
 
 defmodule Skirnir.Imap.Server do
-    use GenFSM
+    use GenStateMachine
 
     import Skirnir.Imap.Parser, only: [parse: 1]
     import Skirnir.Inet, only: [gethostinfo: 1]
@@ -41,12 +41,11 @@ defmodule Skirnir.Imap.Server do
     end
 
     def start_link(ref, socket, transport, _opts) do
-        :gen_fsm.start_link(__MODULE__, [ref, socket, transport], [])
+        GenStateMachine.start_link(__MODULE__, [ref, socket, transport])
     end
 
     def init([ref, socket, transport]) do
         Logger.debug("[imap] start worker")
-        :gen_fsm.send_event(self(), {:init, ref})
         send = fn(data) -> transport.send(socket, data) end
         {address, name} = gethostinfo(socket)
         id = gen_session_id()
@@ -56,10 +55,11 @@ defmodule Skirnir.Imap.Server do
                                 transport: transport,
                                 address: address,
                                 remote_name: name,
-                                send: send}}
+                                send: send},
+         {:next_event, :cast, {:init, ref}}}
     end
 
-    def init({:init, ref}, state_data) do
+    def init(:cast, {:init, ref}, state_data) do
         %StateData{id: id,
                    socket: socket,
                    transport: transport} = state_data
@@ -71,7 +71,7 @@ defmodule Skirnir.Imap.Server do
         {:next_state, :noauth, state_data, timeout()}
     end
 
-    def noauth({:capability, tag}, state_data) do
+    def noauth(:cast, {:capability, tag}, state_data) do
         %StateData{id: id,
                    socket: socket,
                    transport: transport} = state_data
@@ -79,38 +79,38 @@ defmodule Skirnir.Imap.Server do
         Logger.debug("[imap] [#{id}] [#{tag}] #{caps}")
         transport.send(socket, "* #{caps}\r\n")
         transport.send(socket, "#{tag} OK Pre-login capabilities listed, post-login capabilities have more.\r\n")
-        {:next_state, :noauth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def noauth({:noop, tag}, state_data) do
+    def noauth(:cast, {:noop, tag}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{tag}] NOOP")
         transport.send(socket, "#{tag} OK NOOP completed.\r\n")
-        {:next_state, :noauth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def noauth({:logout, tag}, state_data) do
+    def noauth(:cast, {:logout, tag}, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.info("[imap] [#{id}] [#{tag}] request logout")
         transport.send(socket, "#{tag} OK Logout completed.\r\n")
         {:stop, :normal, state_data}
     end
 
-    def noauth(:timeout, state_data) do
+    def noauth(:timeout, _, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.warn("[imap] [#{id}] timeout, closing session")
         transport.send(socket, "* BYE Disconnected for inactivity.\r\n")
         {:stop, :normal, state_data}
     end
 
-    def noauth({:unknown, tag, command}, state_data) do
+    def noauth(:cast, {:unknown, tag, command}, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.error("[imap] [#{id}] [#{tag}] command unknown: #{command}")
         transport.send(socket, "#{tag} BAD Error in IMAP command received by server.\r\n")
-        {:next_state, :noauth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def noauth({:login, tag, user, pass}, %StateData{tls: true} = state_data) do
+    def noauth(:cast, {:login, tag, user, pass}, %StateData{tls: true} = state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         case Skirnir.Auth.Backend.check(user, pass) do
             {:ok, user_id} ->
@@ -125,20 +125,20 @@ defmodule Skirnir.Imap.Server do
                 Logger.error("[imap] [#{id}] [#{ip}] invalid auth for #{user}")
                 transport.send(socket,
                     "#{tag} NO [AUTHENTICATIONFAILED] Authentication failed.\r\n")
-                {:next_state, :noauth, state_data, timeout()}
+                {:keep_state_and_data, timeout()}
         end
     end
 
-    def noauth({:login, tag, user, _pass}, state_data) do
+    def noauth(:cast, {:login, tag, user, _pass}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.error("[imap] [#{id}] [#{user}] [#{tag}] required TLS for AUTH")
         msg = "* BAD [ALERT] Plaintext authentication not allowed without SSL/TLS.\r\n" <>
               "#{tag} NO [PRIVACYREQUIRED] Plaintext authentication disallowed on non-secure (SSL/TLS) connections.\r\n"
         transport.send socket, msg
-        {:next_state, :noauth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def noauth(command, state_data) do
+    def noauth(:cast, command, state_data) do
         [cmd, tag|_] = Tuple.to_list(command)
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.error("[imap] [#{id}] command unknow: #{cmd}")
@@ -147,7 +147,7 @@ defmodule Skirnir.Imap.Server do
         {:stop, :normal, state_data}
     end
 
-    def auth({:select, tag, mbox}, state_data) do
+    def auth(:cast, {:select, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] selecting #{mbox}")
         case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
@@ -169,14 +169,14 @@ defmodule Skirnir.Imap.Server do
                 Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
-                {:next_state, :auth, state_data, timeout()}
+                {:keep_state_and_data, timeout()}
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
-    def auth({:examine, tag, mbox}, state_data) do
+    def auth(:cast, {:examine, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] examining #{mbox}")
         case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
@@ -195,14 +195,14 @@ defmodule Skirnir.Imap.Server do
                 Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
-                {:next_state, :auth, state_data, timeout()}
+                {:keep_state_and_data, timeout()}
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
-    def auth({:create, tag, mbox}, state_data) do
+    def auth(:cast, {:create, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
         # FIXME validate the name of the folder (to avoid to use special chars)
@@ -220,10 +220,10 @@ defmodule Skirnir.Imap.Server do
                 Logger.error("[imap] [#{id}] [#{user}] try createing #{mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
-        {:next_state, :auth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def auth({:delete, tag, mbox}, state_data) do
+    def auth(:cast, {:delete, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
         case Skirnir.Delivery.Backend.delete_mailbox(user_id, mbox) do
@@ -240,10 +240,10 @@ defmodule Skirnir.Imap.Server do
                 Logger.error("[imap] [#{id}] [#{user}] try deleting #{mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
-        {:next_state, :auth, state_data, timeout()}
+        {:keep_state_and_data, timeout()}
     end
 
-    def auth({:status, tag, mbox, items}, state_data) do
+    def auth(:cast, {:status, tag, mbox, items}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
         case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
@@ -259,36 +259,32 @@ defmodule Skirnir.Imap.Server do
                 Logger.debug("[imap] [#{id}] [#{user}] status #{mbox}: #{info}")
                 transport.send(socket, "* STATUS #{mbox} (#{info})\r\n" <>
                                        "#{tag} OK STATUS completed\r\n")
-                {:next_state, :auth, state_data, timeout()}
+                {:keep_state_and_data, timeout()}
             {:error, :enopath} ->
                 Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
-                {:next_state, :auth, state_data, timeout()}
+                {:keep_state_and_data, timeout()}
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
-    def auth(whatever, state_data) do
-        case noauth(whatever, state_data) do
-            {:stop, :normal, new_state_data} ->
-                {:stop, :normal, new_state_data}
-            {:next_state, _state, new_state_data, t} ->
-                {:next_state, :auth, new_state_data, t}
-        end
+    def auth(:cast, whatever, state_data) do
+        noauth(:cast, whatever, state_data)
     end
 
-    def selected({:select, tag, mbox}, state_data) do
+    def selected(:cast, {:select, tag, mbox}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
         msg = "* OK [CLOSED] Previous mailbox closed.\r\n"
         transport.send(socket, msg)
-        auth({:select, tag, mbox}, %StateData{state_data | mbox_select: nil})
+        {:next_state, :auth, %StateData{state_data | mbox_select: nil},
+         {:next_event, :cast, {:select, tag, mbox}}}
     end
 
-    def selected({:close, tag}, state_data) do
+    def selected(:cast, {:close, tag}, state_data) do
         %StateData{id: id, socket: socket, mbox_select: mbox,
                    transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
@@ -297,24 +293,19 @@ defmodule Skirnir.Imap.Server do
         {:next_state, :auth, %StateData{state_data | mbox_select: nil}}
     end
 
-    def selected(whatever, state_data) do
-        case auth(whatever, state_data) do
-            {:stop, :normal, new_state_data} ->
-                {:stop, :normal, new_state_data}
-            {:next_state, _state, new_state_data, t} ->
-                {:next_state, :selected, new_state_data, t}
-        end
+    def selected(:cast, whatever, state_data) do
+        auth(:cast, whatever, state_data)
     end
 
-    def handle_info({:tcp_closed, _socket}, _state, state_data) do
+    def handle_event(:info, {:tcp_closed, _socket}, _state, state_data) do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
-    def handle_info({:ssl_closed, _socket}, _state, state_data) do
+    def handle_event(:info, {:ssl_closed, _socket}, _state, state_data) do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
-    def handle_info({trans, _port, newdata}, state, state_data) do
+    def handle_event(:info, {trans, _port, newdata}, state, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         Logger.debug("[imap] received: #{inspect(newdata)}")
         case parse(newdata) do
@@ -338,10 +329,13 @@ defmodule Skirnir.Imap.Server do
                 transport.setopts(socket, [{:active, :once}])
                 {:next_state, state, state_data, timeout()}
             command ->
-                :gen_fsm.send_event(self(), command)
                 transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data, timeout()}
+                {:next_state, state, state_data, {:next_event, :cast, command}}
         end
+    end
+
+    def handle_event(type, msg, state_name, state_data) do
+        apply(__MODULE__, state_name, [type, msg, state_data])
     end
 
     # --------------------------------------------------------------------------

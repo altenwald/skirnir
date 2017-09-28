@@ -17,7 +17,8 @@ defmodule Skirnir.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :ranch, :timex, :erocksdb],
+    [applications: [:logger, :ranch, :timex, :erocksdb, :exleveldb,
+                    :gen_state_machine],
      mod: {Skirnir, []}]
   end
 
@@ -26,6 +27,7 @@ defmodule Skirnir.Mixfile do
      {:hashids, "~> 2.0"},
      {:json, "~> 1.0.2"},
      {:timex, "~> 3.1.24"},
+     {:gen_state_machine, "~> 2.0.1"},
 
      # leveldb backend:
      {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
