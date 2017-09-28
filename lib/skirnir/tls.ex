@@ -13,7 +13,8 @@ defmodule Skirnir.Tls do
             packet: :line,
             reuse_sessions: false,
             reuseaddr: true,
-            ssl_imp: :new
+            ssl_imp: :new,
+            v2_hello_compatible: true
         ]
         :ssl.ssl_accept(socket, options, @timeout)
     end
