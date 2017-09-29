@@ -54,8 +54,8 @@ defmodule Skirnir.Smtp.Server.Queue do
     end
 
     def handle_call({:enqueue, id, next_try}, _from, {timer, queue}) do
-        Logger.info("[queue] [#{id}] enqueued")
-        {:reply, :ok, add_timer(timer, queue ++ [{id,next_try}])}
+        Logger.info("[queue] [#{id}] enqueued (try at #{next_try})")
+        {:reply, :ok, add_timer(timer, queue ++ [{id, next_try}])}
     end
 
     def handle_call(:dequeue, _from, {timer, []}), do:
@@ -66,7 +66,7 @@ defmodule Skirnir.Smtp.Server.Queue do
     end
 
     def handle_info(:process, {_timer, prev_queue}) do
-        not_try = Enum.filter(prev_queue, fn({_id,next_try}) ->
+        not_try = Enum.filter(prev_queue, fn({_id, next_try}) ->
             next_try != nil and Timex.before?(Timex.now(), next_try)
         end)
         {elements, queue} = Enum.split(prev_queue -- not_try, threshold())
