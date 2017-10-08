@@ -22,6 +22,9 @@ defmodule Skirnir.Imap.Parser do
     def command([tag, "EXAMINE", mbox]), do: {:examine, tag, get_name(mbox)}
     def command([tag, "CREATE", mbox]), do: {:create, tag, get_name(mbox)}
     def command([tag, "DELETE", mbox]), do: {:delete, tag, get_name(mbox)}
+    def command([tag, "RENAME", mbox, newmbox]) do
+        {:rename, tag, get_name(mbox), get_name(newmbox)}
+    end
     def command([tag, "STATUS", mbox|items]) do
         items = for item <- items do
             item

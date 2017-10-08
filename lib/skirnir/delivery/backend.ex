@@ -40,7 +40,7 @@ defmodule Skirnir.Delivery.Backend do
         |> Enum.join(sep)
     end
 
-    def basepath(path) do
+    def basename(path) do
         sep = Skirnir.Imap.folder_sep()
         path
         |> String.trim(sep)
@@ -48,4 +48,15 @@ defmodule Skirnir.Delivery.Backend do
         |> Enum.filter(fn(x) -> x != "" end)
         |> List.last
     end
+
+    def basepath(path) do
+        sep = Skirnir.Imap.folder_sep()
+        path
+        |> String.trim(sep)
+        |> String.split(sep)
+        |> Enum.filter(fn(x) -> x != "" end)
+        |> Enum.drop(-1)
+        |> Enum.join(sep)
+    end
+
 end

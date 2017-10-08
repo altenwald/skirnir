@@ -231,13 +231,30 @@ defmodule Skirnir.Imap.Server do
                 Logger.debug("[imap] [#{id}] [#{user}] deleted #{mbox}")
                 transport.send(socket, "#{tag} OK DELETE completed.\r\n")
             {:error, :enotfound} ->
-                Logger.debug("[imap] [#{id}] [#{user}] not found #{mbox} to delete")
+                Logger.warn("[imap] [#{id}] [#{user}] not found #{mbox} to delete")
                 transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox doesn't exist: #{mbox}\r\n")
             {:error, :enoempty} ->
-                Logger.debug("[imap] [#{id}] [#{user}] try deleting mailbox no empty: #{mbox}")
+                Logger.warn("[imap] [#{id}] [#{user}] try deleting mailbox no empty: #{mbox}")
                 transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox has children, delete them first\r\n")
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] try deleting #{mbox}: #{error}")
+                transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
+        end
+        {:keep_state_and_data, timeout()}
+    end
+
+    def auth(:cast, {:rename, tag, old_mbox, new_mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] renaming #{old_mbox} to #{new_mbox}")
+        case Skirnir.Delivery.Backend.rename_mailbox(user_id, old_mbox, new_mbox) do
+            :ok ->
+                Logger.debug("[imap] [#{id}] [#{user}] renamed to #{new_mbox}")
+                transport.send(socket, "#{tag} OK RENAME completed.\r\n")
+            {:error, :eduplicated} ->
+                Logger.warn("[imap] [#{id}] [#{user}] rename isn't possible #{new_mbox} exists")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Target mailbox already exists")
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] try renaming #{old_mbox} to #{new_mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:keep_state_and_data, timeout()}

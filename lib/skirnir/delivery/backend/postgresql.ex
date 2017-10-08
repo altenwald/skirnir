@@ -151,7 +151,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
 
     def create_mailbox(user_id, full_path) do
         parent_full_path = Skirnir.Delivery.Backend.parent_full_path(full_path)
-        name = Skirnir.Delivery.Backend.basepath(full_path)
+        name = Skirnir.Delivery.Backend.basename(full_path)
         case get_mailbox_parent(user_id, parent_full_path) do
             {:ok, parent_id} ->
                 query = """
@@ -189,6 +189,74 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
             {:error, %Postgrex.Error{postgres: %{message: error}}} ->
                 Logger.error("[delivery] [uid:#{user_id}] deleting '#{full_path}': #{error}")
                 {:error, error}
+        end
+    end
+
+    defp exists_mailbox(user_id, full_path) do
+        query = "SELECT 1 FROM mailboxes WHERE user_id = $1 AND full_path = $2"
+        case Postgrex.query(@conn, query, [user_id, full_path]) do
+            {:ok, %Postgrex.Result{num_rows: 1}} ->
+                true
+            {:ok, _} ->
+                false
+            {:error, %Postgrex.Error{postgres: %{message: error}}} ->
+                Logger.error("[access] [uid:#{user_id}] '#{full_path}': #{error}")
+                {:error, error}
+        end
+    end
+
+    defp rename_mailbox!(user_id, old_full_path, new_full_path) do
+        basename = Skirnir.Delivery.Backend.basename(new_full_path)
+        query = """
+                UPDATE mailboxes
+                SET name = $1, full_path = $2
+                WHERE user_id = $3 AND full_path = $4
+                """
+        params = [basename, new_full_path, user_id, old_full_path]
+        case Postgrex.query(@conn, query, params) do
+            {:ok, _} ->
+                :ok
+            {:error, error} ->
+                Logger.error("[access] [uid:#{user_id}] cannot " <>
+                             "change '#{old_full_path}' to " <>
+                             "'#{new_full_path}': #{error}")
+                {:error, error}
+        end
+    end
+
+    def rename_mailbox(user_id, old_full_path, new_full_path) do
+        basepath = Skirnir.Delivery.Backend.basepath(new_full_path)
+        case exists_mailbox(user_id, basepath) do
+            true ->
+                case exists_mailbox(user_id, new_full_path) do
+                    true ->
+                        Logger.error("[access] [uid:#{user_id}] rename error " <>
+                                     "from '#{old_full_path}' to " <>
+                                     "'#{new_full_path}'")
+                        {:error, :eduplicated}
+                    false ->
+                        rename_mailbox!(user_id, old_full_path, new_full_path)
+                end
+            false ->
+                case create_mailbox_recursive(user_id, basepath) do
+                    :ok ->
+                        rename_mailbox!(user_id, old_full_path, new_full_path)
+                    {:error, error} ->
+                        Logger.error("[access] [uid:#{user_id}] cannot " <>
+                                     "create base '#{basepath}' to store " <>
+                                     "'#{new_full_path}': #{error}")
+                end
+        end
+    end
+
+    defp create_mailbox_recursive(user_id, full_path) do
+        basepath = Skirnir.Delivery.Backend.basepath(full_path)
+        case (basepath == "") or exists_mailbox(user_id, basepath) do
+            true ->
+                create_mailbox(user_id, full_path)
+            false ->
+                {:ok, _mailbox_id} = create_mailbox_recursive(user_id, basepath)
+                create_mailbox(user_id, full_path)
         end
     end
 
