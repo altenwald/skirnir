@@ -288,8 +288,8 @@ defmodule Skirnir.Imap.Server do
         end
     end
 
-    def auth(:cast, whatever, state_data) do
-        noauth(:cast, whatever, state_data)
+    def auth(type, whatever, state_data) do
+        noauth(type, whatever, state_data)
     end
 
     def selected(:cast, {:select, tag, mbox}, state_data) do
@@ -310,8 +310,8 @@ defmodule Skirnir.Imap.Server do
         {:next_state, :auth, %StateData{state_data | mbox_select: nil}}
     end
 
-    def selected(:cast, whatever, state_data) do
-        auth(:cast, whatever, state_data)
+    def selected(type, whatever, state_data) do
+        auth(type, whatever, state_data)
     end
 
     def handle_event(:info, {:tcp_closed, _socket}, _state, state_data) do
