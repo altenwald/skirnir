@@ -144,7 +144,7 @@ defmodule Skirnir.Imap.Server do
         Logger.error("[imap] [#{id}] command unknow: #{cmd}")
         msg = "#{tag} BAD Error in IMAP command received by server.\r\n"
         transport.send socket, msg
-        {:stop, :normal, state_data}
+        {:keep_state_and_data, timeout()}
     end
 
     def auth(:cast, {:select, tag, mbox}, state_data) do
