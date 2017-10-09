@@ -109,6 +109,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
+    defp get_mailbox_id(_user_id, ""), do: nil
     defp get_mailbox_id(user_id, full_path) do
         query =
             """
@@ -129,37 +130,20 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
-    defp get_mailbox_parent(_user_id, ""), do: {:ok, nil}
-    defp get_mailbox_parent(user_id, parent) do
-        query = """
-                SELECT id
-                FROM mailboxes
-                WHERE full_path = $1
-                AND user_id = $2
-                """
-        case Postgrex.query(@conn, query, [parent, user_id]) do
-            {:ok, %Postgrex.Result{rows: [[id]]}} ->
-                {:ok, id}
-            {:ok, %Postgrex.Result{num_rows: 0}} ->
-                Logger.warn("[delivery] [uid:#{user_id}] not found #{parent}")
-                {:error, :enotfound}
-            {:error, %Postgrex.Error{postgres: %{message: error}}} ->
-                Logger.error("[delivery] [uid:#{user_id}] get '#{parent}': #{error}")
-                {:error, error}
-        end
-    end
-
     def create_mailbox(user_id, full_path) do
-        parent_full_path = Skirnir.Delivery.Backend.parent_full_path(full_path)
-        name = Skirnir.Delivery.Backend.basename(full_path)
-        case get_mailbox_parent(user_id, parent_full_path) do
-            {:ok, parent_id} ->
+        basepath = Skirnir.Delivery.Backend.basepath(full_path)
+        basename = Skirnir.Delivery.Backend.basename(full_path)
+        case get_mailbox_id(user_id, basepath) do
+            nil when basepath != "" ->
+                {:error, :enoparent}
+            parent_id ->
                 query = """
                         INSERT INTO mailboxes(name, full_path, parent_id, user_id)
                         VALUES($1, $2, $3, $4)
                         RETURNING id;
                         """
-                case Postgrex.query(@conn, query, [name, full_path, parent_id, user_id]) do
+                args = [basename, full_path, parent_id, user_id]
+                case Postgrex.query(@conn, query, args) do
                     {:ok, %Postgrex.Result{rows: [[mailbox_id]]}} ->
                         {:ok, mailbox_id}
                     {:error, %Postgrex.Error{postgres: %{code: :unique_violation}}} ->
@@ -168,8 +152,6 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                         Logger.error("[delivery] [uid:#{user_id}] creating '#{full_path}': #{error}")
                         {:error, error}
                 end
-            _ ->
-                {:error, :enoparent}
         end
     end
 
@@ -182,10 +164,10 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         case Postgrex.query(@conn, query, [user_id, full_path]) do
             {:ok, %Postgrex.Result{num_rows: 1}} ->
                 :ok
-            {:ok, %Postgrex.Error{postgres: %{code: :foreign_key_violation}}} ->
-                {:error, :enoempty}
             {:ok, _} ->
                 {:error, :enotfound}
+            {:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation}}} ->
+                {:error, :enoempty}
             {:error, %Postgrex.Error{postgres: %{message: error}}} ->
                 Logger.error("[delivery] [uid:#{user_id}] deleting '#{full_path}': #{error}")
                 {:error, error}
@@ -205,14 +187,14 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
-    defp rename_mailbox!(user_id, old_full_path, new_full_path) do
+    defp rename_mailbox!(user_id, parent_id, old_full_path, new_full_path) do
         basename = Skirnir.Delivery.Backend.basename(new_full_path)
         query = """
                 UPDATE mailboxes
-                SET name = $1, full_path = $2
-                WHERE user_id = $3 AND full_path = $4
+                SET name = $1, full_path = $2, parent_id = $3
+                WHERE user_id = $4 AND full_path = $5
                 """
-        params = [basename, new_full_path, user_id, old_full_path]
+        params = [basename, new_full_path, parent_id, user_id, old_full_path]
         case Postgrex.query(@conn, query, params) do
             {:ok, _} ->
                 :ok
@@ -235,21 +217,54 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                                      "'#{new_full_path}'")
                         {:error, :eduplicated}
                     false ->
-                        rename_mailbox!(user_id, old_full_path, new_full_path)
+                        parent_id = get_mailbox_id(user_id, basepath)
+                        rename_mailbox!(user_id, parent_id, old_full_path,
+                                        new_full_path)
                 end
             false ->
                 case create_mailbox_recursive(user_id, basepath) do
-                    :ok ->
-                        rename_mailbox!(user_id, old_full_path, new_full_path)
+                    {:ok, parent_id} ->
+                        rename_mailbox!(user_id, parent_id, old_full_path,
+                                        new_full_path)
                     {:error, error} ->
                         Logger.error("[access] [uid:#{user_id}] cannot " <>
                                      "create base '#{basepath}' to store " <>
-                                     "'#{new_full_path}': #{error}")
+                                     "'#{new_full_path}': #{inspect(error)}")
                 end
         end
     end
 
-    defp create_mailbox_recursive(user_id, full_path) do
+    def move_inbox_to(user_id, new_full_path) do
+        mailbox_id = case get_mailbox_id(user_id, new_full_path) do
+            nil ->
+                case create_mailbox_recursive(user_id, new_full_path) do
+                    {:ok, mailbox_id} -> mailbox_id
+                    {:error, :enoparent} -> nil
+                end
+            mailbox_id -> mailbox_id
+        end
+        query = """
+                UPDATE emails
+                SET mailbox_id = $1
+                WHERE mailbox_id = (SELECT id
+                                    FROM mailboxes
+                                    WHERE full_path = $2 AND user_id = $3)
+                """;
+        case Postgrex.query(@conn, query, [mailbox_id, "INBOX", user_id]) do
+            {:ok, _} ->
+                Logger.debug("[access] [uid:#{user_id}] moved INBOX elements " <>
+                             "to #{new_full_path} (#{mailbox_id})")
+                :ok
+            {:error, %Postgrex.Error{postgres: %{code: :not_null_violation}}} ->
+                {:error, :enotfound}
+            {:error, error} ->
+                Logger.error("[access] [uid:#{user_id}] moving INBOX to " <>
+                             "#{new_full_path}: #{inspect(error)}")
+                {:error, error}
+        end
+    end
+
+    def create_mailbox_recursive(user_id, full_path) do
         basepath = Skirnir.Delivery.Backend.basepath(full_path)
         case (basepath == "") or exists_mailbox(user_id, basepath) do
             true ->

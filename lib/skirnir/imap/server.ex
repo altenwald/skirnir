@@ -243,6 +243,20 @@ defmodule Skirnir.Imap.Server do
         {:keep_state_and_data, timeout()}
     end
 
+    def auth(:cast, {:rename, tag, "INBOX", new_mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] moving INBOX emails to #{new_mbox}")
+        case Skirnir.Delivery.Backend.move_inbox_to(user_id, new_mbox) do
+            :ok ->
+                Logger.debug("[imap] [#{id}] [#{user}] moved to #{new_mbox}")
+                transport.send(socket, "#{tag} OK RENAME completed.\r\n")
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] try moving INBOX to #{new_mbox}: #{error}")
+                transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
+        end
+        {:keep_state_and_data, timeout()}
+    end
+
     def auth(:cast, {:rename, tag, old_mbox, new_mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] renaming #{old_mbox} to #{new_mbox}")

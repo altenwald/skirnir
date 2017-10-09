@@ -27,18 +27,18 @@ defmodule Skirnir.Delivery.Backend do
 
     backend_fun :get_mailbox_info, [user, path]
     backend_fun :set_unrecent, [user_id, mailbox_id, recent]
+
+    @callback create_mailbox(String.t, String.t) :: :ok | {:error, atom()}
     backend_fun :create_mailbox, [user_id, path]
+
+    @callback delete_mailbox(String.t, String.t) :: :ok | {:error, atom()}
     backend_fun :delete_mailbox, [user_id, path]
 
-    def parent_full_path(path) do
-        sep = Skirnir.Imap.folder_sep()
-        path
-        |> String.trim(sep)
-        |> String.split(sep)
-        |> Enum.filter(fn(x) -> x != "" end)
-        |> Enum.drop(-1)
-        |> Enum.join(sep)
-    end
+    @callback rename_mailbox(String.t, String.t, String.t) :: :ok | {:error, atom()}
+    backend_fun :rename_mailbox, [user_id, old_path, new_path]
+
+    @callback move_inbox_to(String.t, String.t) :: :ok | {:error, atom()}
+    backend_fun :move_inbox_to, [user_id, new_path]
 
     def basename(path) do
         sep = Skirnir.Imap.folder_sep()
