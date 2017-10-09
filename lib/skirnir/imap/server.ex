@@ -336,9 +336,9 @@ defmodule Skirnir.Imap.Server do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
-    def handle_event(:info, {trans, _port, newdata}, state, state_data) do
+    def handle_event(:info, {trans, _port, newdata}, state_name, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] received: #{inspect(newdata)}")
+        Logger.debug("[imap] [#{state_data.id}] received: #{inspect(newdata)}")
         case parse(newdata) do
             {:starttls, tag} when trans == :tcp ->
                 Logger.debug("[imap] [#{state_data.id}] changing to TLS")
@@ -358,10 +358,11 @@ defmodule Skirnir.Imap.Server do
             {:starttls, tag} ->
                 state_data.send.("#{tag} BAD STARTTLS is active right now.\r\n")
                 transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data, timeout()}
+                {:next_state, state_name, state_data, timeout()}
             command ->
                 transport.setopts(socket, [{:active, :once}])
-                {:next_state, state, state_data, {:next_event, :cast, command}}
+                {:next_state, state_name, state_data,
+                 {:next_event, :cast, command}}
         end
     end
 

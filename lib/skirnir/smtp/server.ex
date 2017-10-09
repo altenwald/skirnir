@@ -299,7 +299,7 @@ defmodule Skirnir.Smtp.Server do
     #---------------------------------------------------------------------------
     # handle info with the rest of states
     #---------------------------------------------------------------------------
-    def handle_event(:info, {trans, _port, newdata}, state, state_data) do
+    def handle_event(:info, {trans, _port, newdata}, _state_name, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
         Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
         case parse(newdata) do
