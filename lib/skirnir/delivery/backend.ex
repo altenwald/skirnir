@@ -40,6 +40,10 @@ defmodule Skirnir.Delivery.Backend do
     @callback move_inbox_to(String.t, String.t) :: :ok | {:error, atom()}
     backend_fun :move_inbox_to, [user_id, new_path]
 
+    @callback list_mailboxes(String.t, String.t, String.t) ::
+              {:ok, [String.t | Integer.t]} | {:error, atom()}
+    backend_fun :list_mailboxes, [user_id, reference, mbox]
+
     def basename(path) do
         sep = Skirnir.Imap.folder_sep()
         path

@@ -18,6 +18,7 @@ CREATE TABLE mailboxes (
     uid_next integer NOT NULL DEFAULT 1,
     uid_validity integer NOT NULL DEFAULT extract(epoch from now() at time zone 'utc'),
     user_id integer NOT NULL REFERENCES users(id),
+    attributes varchar(50)[] NOT NULL DEFAULT '{}',
 
     FOREIGN KEY (parent_id) REFERENCES mailboxes(id)
 );

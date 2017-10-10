@@ -292,8 +292,33 @@ defmodule Skirnir.Imap.Server do
                                        "#{tag} OK STATUS completed\r\n")
                 {:keep_state_and_data, timeout()}
             {:error, :enopath} ->
-                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
+                transport.send(socket, msg)
+                {:keep_state_and_data, timeout()}
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                {:stop, :normal, state_data}
+        end
+    end
+
+    def auth(:cast, {:list, tag, reference, mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
+        case Skirnir.Delivery.Backend.list_mailboxes(user_id, reference, mbox) do
+            {:ok, mailboxes} ->
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] listing #{length(mailboxes)} mailboxes")
+                Enum.map(mailboxes, fn([base_path, full_path, attributes]) ->
+                    full_path_enclosed = JSON.encode!(full_path)
+                    base_path_enclosed = JSON.encode!(base_path)
+                    msg = "* LIST (#{attributes}) #{base_path_enclosed} " <>
+                          "#{full_path_enclosed}\r\n"
+                    transport.send(socket, msg)
+                end)
+                transport.send(socket, "#{tag} OK LIST completed\r\n")
+                {:keep_state_and_data, timeout()}
+            {:error, :enopath} ->
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] list for '#{reference}' and '#{mbox}' doesn't exist")
+                msg = "#{tag} NO cannot list that reference or name\r\n"
                 transport.send(socket, msg)
                 {:keep_state_and_data, timeout()}
             {:error, error} ->

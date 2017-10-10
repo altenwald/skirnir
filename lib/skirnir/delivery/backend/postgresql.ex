@@ -43,6 +43,36 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
+    def list_mailboxes(_user_id, "", ""), do: {:ok, [["/", "", "\\Noselect"]]}
+    def list_mailboxes(user_id, "", "*") do
+        query = "SELECT '/', full_path, attributes FROM mailboxes WHERE user_id = $1"
+        case Postgrex.query(@conn, query, [user_id]) do
+            {:ok, %Postgrex.Result{rows: []}} ->
+                {:ok, [["/", "", "\\Noselect"]]}
+            {:ok, %Postgrex.Result{rows: mailboxes}} ->
+                {:ok, mailboxes}
+            {:error, %Postgrex.Error{postgres: %{message: error}}} ->
+                Logger.error("[delivery] [uid:#{user_id}] error listing: #{error}")
+                {:error, error}
+        end
+    end
+    def list_mailboxes(user_id, "", "%") do
+        query = """
+                SELECT '/', full_path, attributes
+                FROM mailboxes
+                WHERE user_id = $1 AND parent_id IS NULL
+                """
+        case Postgrex.query(@conn, query, [user_id]) do
+            {:ok, %Postgrex.Result{rows: []}} ->
+                {:ok, [["/", "", "\\Noselect"]]}
+            {:ok, %Postgrex.Result{rows: mailboxes}} ->
+                {:ok, mailboxes}
+            {:error, %Postgrex.Error{postgres: %{message: error}}} ->
+                Logger.error("[delivery] [uid:#{user_id}] error listing: #{error}")
+                {:error, error}
+        end
+    end
+
     def get_mailbox_info(user_id, full_path) do
         mailbox_id = get_mailbox_id(user_id, full_path)
         query =
