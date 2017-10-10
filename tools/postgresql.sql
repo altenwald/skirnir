@@ -12,18 +12,16 @@ CREATE TABLE users (
 CREATE TABLE mailboxes (
     id serial NOT NULL PRIMARY KEY,
     name varchar(128) NOT NULL,
-    parent_id integer,
+    parent_id integer REFERENCES mailboxes(id),
     full_path text NOT NULL,
     full_path_ids ltree NOT NULL,
     uid_next integer NOT NULL DEFAULT 1,
     uid_validity integer NOT NULL DEFAULT extract(epoch from now() at time zone 'utc'),
-    user_id integer NOT NULL REFERENCES users(id),
-    attributes varchar(50)[] NOT NULL DEFAULT '{}',
-
-    FOREIGN KEY (parent_id) REFERENCES mailboxes(id)
+    users_id integer NOT NULL REFERENCES users(id),
+    attributes varchar(50)[] NOT NULL DEFAULT '{}'
 );
 
-CREATE UNIQUE INDEX ON mailboxes(user_id, full_path);
+CREATE UNIQUE INDEX ON mailboxes(users_id, full_path);
 
 CREATE TABLE emails (
     id char(12) NOT NULL PRIMARY KEY,
@@ -34,8 +32,8 @@ CREATE TABLE emails (
     body text NOT NULL,
     size integer NOT NULL DEFAULT 0,
     flags varchar(50)[] NOT NULL,
-    mailbox_id integer NOT NULL REFERENCES mailboxes(id) ON DELETE CASCADE,
-    user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mailboxes_id integer NOT NULL REFERENCES mailboxes(id) ON DELETE CASCADE,
+    users_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     uid integer NOT NULL UNIQUE
 );
 
