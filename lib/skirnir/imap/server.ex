@@ -7,6 +7,8 @@ defmodule Skirnir.Imap.Server do
     import Skirnir.Inet, only: [gethostinfo: 1]
 
     alias Skirnir.Tls
+    alias Skirnir.Delivery.Backend, as: DeliveryBackend
+    alias Skirnir.Auth.Backend, as: AuthBackend
 
     @behaviour :ranch_protocol
     @timeout 5
@@ -78,7 +80,8 @@ defmodule Skirnir.Imap.Server do
         caps = capabilities(state_data)
         Logger.debug("[imap] [#{id}] [#{tag}] #{caps}")
         transport.send(socket, "* #{caps}\r\n")
-        transport.send(socket, "#{tag} OK Pre-login capabilities listed, post-login capabilities have more.\r\n")
+        transport.send(socket, "#{tag} OK Pre-login capabilities listed, " <>
+                               "post-login capabilities have more.\r\n")
         {:keep_state_and_data, timeout()}
     end
 
@@ -106,16 +109,19 @@ defmodule Skirnir.Imap.Server do
     def noauth(:cast, {:unknown, tag, command}, state_data) do
         %StateData{socket: socket, transport: transport, id: id} = state_data
         Logger.error("[imap] [#{id}] [#{tag}] command unknown: #{command}")
-        transport.send(socket, "#{tag} BAD Error in IMAP command received by server.\r\n")
+        transport.send(socket, "#{tag} BAD Error in IMAP command received " <>
+                               "by server.\r\n")
         {:keep_state_and_data, timeout()}
     end
 
-    def noauth(:cast, {:login, tag, user, pass}, %StateData{tls: true} = state_data) do
+    def noauth(:cast, {:login, tag, user, pass},
+               %StateData{tls: true} = state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
-        case Skirnir.Auth.Backend.check(user, pass) do
+        case AuthBackend.check(user, pass) do
             {:ok, user_id} ->
                 Logger.info("[imap] [#{id}] user authenticated: #{user}")
-                auth_state_data = %StateData{state_data | user: user, user_id: user_id}
+                auth_state_data = %StateData{state_data | user: user,
+                                                          user_id: user_id}
                 caps = capabilities(auth_state_data)
                 transport.send(socket, "* #{caps}\r\n")
                 transport.send(socket, "#{tag} OK Logged in.\r\n")
@@ -123,8 +129,8 @@ defmodule Skirnir.Imap.Server do
             {:error, :enotfound} ->
                 ip = state_data.address
                 Logger.error("[imap] [#{id}] [#{ip}] invalid auth for #{user}")
-                transport.send(socket,
-                    "#{tag} NO [AUTHENTICATIONFAILED] Authentication failed.\r\n")
+                transport.send(socket, "#{tag} NO [AUTHENTICATIONFAILED] " <>
+                                       "Authentication failed.\r\n")
                 {:keep_state_and_data, timeout()}
         end
     end
@@ -132,8 +138,10 @@ defmodule Skirnir.Imap.Server do
     def noauth(:cast, {:login, tag, user, _pass}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.error("[imap] [#{id}] [#{user}] [#{tag}] required TLS for AUTH")
-        msg = "* BAD [ALERT] Plaintext authentication not allowed without SSL/TLS.\r\n" <>
-              "#{tag} NO [PRIVACYREQUIRED] Plaintext authentication disallowed on non-secure (SSL/TLS) connections.\r\n"
+        msg = "* BAD [ALERT] Plaintext authentication not allowed without " <>
+              "SSL/TLS.\r\n" <>
+              "#{tag} NO [PRIVACYREQUIRED] Plaintext authentication " <>
+              "disallowed on non-secure (SSL/TLS) connections.\r\n"
         transport.send socket, msg
         {:keep_state_and_data, timeout()}
     end
@@ -148,17 +156,21 @@ defmodule Skirnir.Imap.Server do
     end
 
     def auth(:cast, {:select, tag, mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] selecting #{mbox}")
-        case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "selecting #{mbox}")
+        case DeliveryBackend.get_mailbox_info(user_id, mbox) do
             {:ok, id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
                 if msg_recent > 0 do
-                    Skirnir.Delivery.Backend.set_unrecent(user_id, id, msg_recent)
+                    DeliveryBackend.set_unrecent(user_id, id,
+                                                          msg_recent)
                 end
                 selected_state_data = %StateData{state_data | mbox_select: id}
                 msg = "* #{msg_exists} EXISTS\r\n" <>
                       "* #{msg_recent} RECENT\r\n" <>
-                      "#{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]\r\n" <>
+                      "#{unseen_info(unseen)}* OK [UIDVALIDITY " <>
+                      "#{uid_validity}]\r\n" <>
                       "* OK [UIDNEXT #{uid_next}]\r\n" <>
                       "* FLAGS (#{flags()})\r\n" <>
                       "* OK [PERMANENTFLAGS (#{flags()} \\*)] Limited\r\n" <>
@@ -166,125 +178,159 @@ defmodule Skirnir.Imap.Server do
                 transport.send(socket, msg)
                 {:next_state, :selected, selected_state_data, timeout()}
             {:error, :enopath} ->
-                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} " <>
+                             "doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
                 {:keep_state_and_data, timeout()}
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
     def auth(:cast, {:examine, tag, mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] examining #{mbox}")
-        case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
-            {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
-                selected_state_data = %StateData{state_data | mbox_select: mailbox_id}
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "examining #{mbox}")
+        case DeliveryBackend.get_mailbox_info(user_id, mbox) do
+            {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists,
+             unseen} ->
+                sel_state_data = %StateData{state_data | mbox_select: mailbox_id}
                 msg = "* #{msg_exists} EXISTS\r\n" <>
                       "* #{msg_recent} RECENT\r\n" <>
-                      "#{unseen_info(unseen)}* OK [UIDVALIDITY #{uid_validity}]\r\n" <>
+                      "#{unseen_info(unseen)}* OK [UIDVALIDITY " <>
+                      "#{uid_validity}]\r\n" <>
                       "* OK [UIDNEXT #{uid_next}]\r\n" <>
                       "* FLAGS (#{flags()})\r\n" <>
                       "* OK [PERMANENTFLAGS (#{flags()} \\*)] Limited\r\n" <>
                       "#{tag} OK [READ-ONLY] EXAMINE completed\r\n"
                 transport.send(socket, msg)
-                {:next_state, :selected, selected_state_data, timeout()}
+                {:next_state, :selected, sel_state_data, timeout()}
             {:error, :enopath} ->
-                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} " <>
+                             "doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
                 {:keep_state_and_data, timeout()}
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
     def auth(:cast, {:create, tag, mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "creating #{mbox}")
         # FIXME validate the name of the folder (to avoid to use special chars)
-        case Skirnir.Delivery.Backend.create_mailbox(user_id, mbox) do
+        case DeliveryBackend.create_mailbox(user_id, mbox) do
             {:ok, mailbox_id} ->
-                Logger.debug("[imap] [#{id}] [#{user}] created (#{mailbox_id}) #{mbox}")
+                Logger.debug("[imap] [#{id}] [#{user}] created " <>
+                             "(#{mailbox_id}) #{mbox}")
                 transport.send(socket, "#{tag} OK CREATE completed\r\n")
             {:error, :enoparent} ->
-                Logger.error("[imap] [#{id}] [#{user}] parent not found for #{mbox}")
-                transport.send(socket, "#{tag} NO [CANNOT] Parent folder isn't created\r\n")
+                Logger.error("[imap] [#{id}] [#{user}] parent not found " <>
+                             "for #{mbox}")
+                transport.send(socket, "#{tag} NO [CANNOT] Parent folder " <>
+                                       "isn't created\r\n")
             {:error, :eduplicated} ->
-                Logger.error("[imap] [#{id}] [#{user}] try create a duplicate mailbox: #{mbox}")
-                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox already exists\r\n")
+                Logger.error("[imap] [#{id}] [#{user}] try create a " <>
+                             "duplicate mailbox: #{mbox}")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox " <>
+                                       "already exists\r\n")
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] try createing #{mbox}: #{error}")
+                Logger.error("[imap] [#{id}] [#{user}] try createing " <>
+                             "#{mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:keep_state_and_data, timeout()}
     end
 
     def auth(:cast, {:delete, tag, mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
-        case Skirnir.Delivery.Backend.delete_mailbox(user_id, mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "creating #{mbox}")
+        case DeliveryBackend.delete_mailbox(user_id, mbox) do
             :ok ->
                 Logger.debug("[imap] [#{id}] [#{user}] deleted #{mbox}")
                 transport.send(socket, "#{tag} OK DELETE completed.\r\n")
             {:error, :enotfound} ->
-                Logger.warn("[imap] [#{id}] [#{user}] not found #{mbox} to delete")
-                transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox doesn't exist: #{mbox}\r\n")
+                Logger.warn("[imap] [#{id}] [#{user}] not found #{mbox} to " <>
+                            "delete")
+                transport.send(socket, "#{tag} NO [NONEXISTENT] Mailbox " <>
+                                       "doesn't exist: #{mbox}\r\n")
             {:error, :enoempty} ->
-                Logger.warn("[imap] [#{id}] [#{user}] try deleting mailbox no empty: #{mbox}")
-                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox has children, delete them first\r\n")
+                Logger.warn("[imap] [#{id}] [#{user}] try deleting mailbox " <>
+                            "no empty: #{mbox}")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Mailbox " <>
+                                       "has children, delete them first\r\n")
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] try deleting #{mbox}: #{error}")
+                Logger.error("[imap] [#{id}] [#{user}] try deleting " <>
+                             "#{mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:keep_state_and_data, timeout()}
     end
 
     def auth(:cast, {:rename, tag, "INBOX", new_mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] moving INBOX emails to #{new_mbox}")
-        case Skirnir.Delivery.Backend.move_inbox_to(user_id, new_mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] moving " <>
+                     "INBOX emails to #{new_mbox}")
+        case DeliveryBackend.move_inbox_to(user_id, new_mbox) do
             :ok ->
                 Logger.debug("[imap] [#{id}] [#{user}] moved to #{new_mbox}")
                 transport.send(socket, "#{tag} OK RENAME completed.\r\n")
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] try moving INBOX to #{new_mbox}: #{error}")
+                Logger.error("[imap] [#{id}] [#{user}] try moving INBOX " <>
+                             "to #{new_mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:keep_state_and_data, timeout()}
     end
 
     def auth(:cast, {:rename, tag, old_mbox, new_mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] renaming #{old_mbox} to #{new_mbox}")
-        case Skirnir.Delivery.Backend.rename_mailbox(user_id, old_mbox, new_mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] renaming " <>
+                     "#{old_mbox} to #{new_mbox}")
+        case DeliveryBackend.rename_mailbox(user_id, old_mbox, new_mbox) do
             :ok ->
                 Logger.debug("[imap] [#{id}] [#{user}] renamed to #{new_mbox}")
                 transport.send(socket, "#{tag} OK RENAME completed.\r\n")
             {:error, :eduplicated} ->
-                Logger.warn("[imap] [#{id}] [#{user}] rename isn't possible #{new_mbox} exists")
-                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Target mailbox already exists")
+                Logger.warn("[imap] [#{id}] [#{user}] rename isn't possible " <>
+                            "#{new_mbox} exists")
+                transport.send(socket, "#{tag} NO [ALREADYEXISTS] Target " <>
+                                       "mailbox already exists")
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] try renaming #{old_mbox} to #{new_mbox}: #{error}")
+                Logger.error("[imap] [#{id}] [#{user}] try renaming " <>
+                             "#{old_mbox} to #{new_mbox}: #{error}")
                 transport.send(socket, "#{tag} BAD Unknown error in server\r\n")
         end
         {:keep_state_and_data, timeout()}
     end
 
     def auth(:cast, {:status, tag, mbox, items}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] creating #{mbox}")
-        case Skirnir.Delivery.Backend.get_mailbox_info(user_id, mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "creating #{mbox}")
+        case DeliveryBackend.get_mailbox_info(user_id, mbox) do
             {:ok, _id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
                 info = List.foldl(items, "",
-                    fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} ";
-                      ("RECENT", res) -> res <> "RECENT #{msg_recent} ";
-                      ("UIDNEXT", res) -> res <> "UIDNEXT #{uid_next} ";
-                      ("UIDVALIDITY", res) -> res <> "UIDVALIDITY #{uid_validity} ";
-                      ("UNSEEN", res) -> res <> "UNSEEN #{unseen} ";
+                    fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} "
+                      ("RECENT", res) -> res <> "RECENT #{msg_recent} "
+                      ("UIDNEXT", res) -> res <> "UIDNEXT #{uid_next} "
+                      ("UIDVALIDITY", res) ->
+                        res <> "UIDVALIDITY #{uid_validity} "
+                      ("UNSEEN", res) -> res <> "UNSEEN #{unseen} "
                       (_, res) -> res
                     end) |> String.rstrip()
                 Logger.debug("[imap] [#{id}] [#{user}] status #{mbox}: #{info}")
@@ -292,21 +338,25 @@ defmodule Skirnir.Imap.Server do
                                        "#{tag} OK STATUS completed\r\n")
                 {:keep_state_and_data, timeout()}
             {:error, :enopath} ->
-                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} doesn't exist")
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] #{mbox} " <>
+                            "doesn't exist")
                 msg = "#{tag} NO Mailbox doesn't exist: #{mbox}\r\n"
                 transport.send(socket, msg)
                 {:keep_state_and_data, timeout()}
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
 
     def auth(:cast, {:list, tag, reference, mbox}, state_data) do
-        %StateData{id: id, user: user, user_id: user_id, socket: socket, transport: transport} = state_data
-        case Skirnir.Delivery.Backend.list_mailboxes(user_id, reference, mbox) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        case DeliveryBackend.list_mailboxes(user_id, reference, mbox) do
             {:ok, mailboxes} ->
-                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] listing #{length(mailboxes)} mailboxes")
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] listing " <>
+                             "#{length(mailboxes)} mailboxes")
                 Enum.map(mailboxes, fn([base_path, full_path, attributes]) ->
                     full_path_enclosed = JSON.encode!(full_path)
                     base_path_enclosed = JSON.encode!(base_path)
@@ -317,12 +367,14 @@ defmodule Skirnir.Imap.Server do
                 transport.send(socket, "#{tag} OK LIST completed\r\n")
                 {:keep_state_and_data, timeout()}
             {:error, :enopath} ->
-                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] list for '#{reference}' and '#{mbox}' doesn't exist")
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] list for " <>
+                            "'#{reference}' and '#{mbox}' doesn't exist")
                 msg = "#{tag} NO cannot list that reference or name\r\n"
                 transport.send(socket, msg)
                 {:keep_state_and_data, timeout()}
             {:error, error} ->
-                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: #{inspect(error)}")
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
                 {:stop, :normal, state_data}
         end
     end
@@ -333,7 +385,8 @@ defmodule Skirnir.Imap.Server do
 
     def selected(:cast, {:select, tag, mbox}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "closing #{mbox}")
         msg = "* OK [CLOSED] Previous mailbox closed.\r\n"
         transport.send(socket, msg)
         {:next_state, :auth, %StateData{state_data | mbox_select: nil},
@@ -343,7 +396,8 @@ defmodule Skirnir.Imap.Server do
     def selected(:cast, {:close, tag}, state_data) do
         %StateData{id: id, socket: socket, mbox_select: mbox,
                    transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] closing #{mbox}")
+        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "closing #{mbox}")
         msg = "#{tag} OK Close completed.\r\n"
         transport.send(socket, msg)
         {:next_state, :auth, %StateData{state_data | mbox_select: nil}}

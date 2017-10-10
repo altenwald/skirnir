@@ -14,7 +14,7 @@ defmodule Skirnir.Auth.Backend.Postgresql do
             SELECT id
             FROM users
             WHERE username = $1
-            AND password = $2
+            AND password = MD5($2)
             """
         case Postgrex.query @conn, query, [user, pass] do
             {:ok, %Postgrex.Result{rows: [[id]]}} ->
@@ -22,7 +22,7 @@ defmodule Skirnir.Auth.Backend.Postgresql do
                 {:ok, id}
             _ ->
                 Logger.error("[auth] access denied for #{user}")
-                Logger.debug("[auht] invalid pass: #{pass}")
+                Logger.debug("[auth] invalid pass: #{pass}")
                 {:error, :enotfound}
         end
     end
