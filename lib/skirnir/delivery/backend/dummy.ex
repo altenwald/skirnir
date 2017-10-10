@@ -62,4 +62,11 @@ defmodule Skirnir.Delivery.Backend.Dummy do
         {:error, :notimpl}
     end
 
+    def list_mailboxes(_user_id, "", "*") do
+        {:ok, [["/", "Trash", "\\NoInferiors \\HasNoChildren"],
+               ["/", "INBOX", "\\NoInferiors \\HasNoChildren"],
+               ["/", "Lists", "\\HasChildren \\Marked"],
+               ["/", "Lists/Erlang", "\\HasNoChildren \\Marked"]]}
+    end
+
 end

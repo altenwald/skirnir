@@ -107,10 +107,10 @@ defmodule Skirnir.Imap.Server do
     end
 
     def noauth(:cast, {:unknown, tag, command}, state_data) do
-        %StateData{socket: socket, transport: transport, id: id} = state_data
+        %StateData{id: id, socket: socket, transport: transport} = state_data
         Logger.error("[imap] [#{id}] [#{tag}] command unknown: #{command}")
-        transport.send(socket, "#{tag} BAD Error in IMAP command received " <>
-                               "by server.\r\n")
+        msg = "#{tag} BAD Error in IMAP command received by server.\r\n"
+        transport.send socket, msg
         {:keep_state_and_data, timeout()}
     end
 
@@ -149,7 +149,7 @@ defmodule Skirnir.Imap.Server do
     def noauth(:cast, command, state_data) do
         [cmd, tag|_] = Tuple.to_list(command)
         %StateData{id: id, socket: socket, transport: transport} = state_data
-        Logger.error("[imap] [#{id}] command unknow: #{cmd}")
+        Logger.error("[imap] [#{id}] [#{tag}] command unknow: #{cmd}")
         msg = "#{tag} BAD Error in IMAP command received by server.\r\n"
         transport.send socket, msg
         {:keep_state_and_data, timeout()}

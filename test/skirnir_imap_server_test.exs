@@ -2,8 +2,7 @@ defmodule SkirnirImapServerTest do
   use ExUnit.Case
 
   test "login without TLS" do
-    imap_server_args = [{:host, {127,0,0,1}},
-                        {:port, 1145}]
+    imap_server_args = [host: {127,0,0,1}, port: 1145]
     {:ok, imap} = :eimap.start_link(imap_server_args)
     :ok = :eimap.login(imap, self(), make_ref(), 'alice', 'alice')
     :ok = :eimap.connect(imap)
@@ -16,8 +15,7 @@ defmodule SkirnirImapServerTest do
   end
 
   test "login TLS and capabilities" do
-    imap_server_args = [{:host, {127,0,0,1}},
-                        {:port, 1145}]
+    imap_server_args = [host: {127,0,0,1}, port: 1145]
     {:ok, imap} = :eimap.start_link(imap_server_args)
     :ok = :eimap.starttls(imap, self(), make_ref())
     :ok = :eimap.login(imap, self(), make_ref(), 'alice', 'alice')
@@ -30,8 +28,7 @@ defmodule SkirnirImapServerTest do
   end
 
   test "folder select" do
-    imap_server_args = [{:host, {127,0,0,1}},
-                        {:port, 1145}]
+    imap_server_args = [host: {127,0,0,1}, port: 1145]
     {:ok, imap} = :eimap.start_link(imap_server_args)
     :ok = :eimap.starttls(imap, self(), make_ref())
     :ok = :eimap.login(imap, self(), make_ref(), 'alice', 'alice')
@@ -52,8 +49,7 @@ defmodule SkirnirImapServerTest do
   end
 
   test "folder status" do
-    imap_server_args = [{:host, {127,0,0,1}},
-                        {:port, 1145}]
+    imap_server_args = [host: {127,0,0,1}, port: 1145]
     folder_status = [:messages, :recent, :uidnext, :uidvalidity, :unseen]
     {:ok, imap} = :eimap.start_link(imap_server_args)
     :ok = :eimap.starttls(imap, self(), make_ref())
@@ -63,6 +59,22 @@ defmodule SkirnirImapServerTest do
     assert :ok = recv(:starttls_complete)
     assert :ok = recv(:authed)
     assert :ok = recv([unseen: 11, uidvalidity: 1, uidnext: 123456789, recent: 10, messages: 100])
+    :ok = :eimap.disconnect(imap)
+  end
+
+  test "list folders" do
+    imap_server_args = [host: {127,0,0,1}, port: 1145]
+    {:ok, imap} = :eimap.start_link(imap_server_args)
+    :ok = :eimap.starttls(imap, self(), make_ref())
+    :ok = :eimap.login(imap, self(), make_ref(), 'alice', 'alice')
+    :ok = :eimap.get_folder_list(imap, self(), make_ref(), "*")
+    :ok = :eimap.connect(imap)
+    assert :ok = recv(:starttls_complete)
+    assert :ok = recv(:authed)
+    assert :ok = recv([{"\\HasNoChildren \\Marked", {"Lists/Erlang"}},
+                       {"\\HasChildren \\Marked", {"Lists"}},
+                       {"\\NoInferiors \\HasNoChildren", {"INBOX"}},
+                       {"\\NoInferiors \\HasNoChildren", {"Trash"}}])
     :ok = :eimap.disconnect(imap)
   end
 
