@@ -44,6 +44,16 @@ defmodule Skirnir.Delivery.Backend do
               {:ok, [String.t | Integer.t]} | {:error, atom()}
     backend_fun :list_mailboxes, [user_id, reference, mbox]
 
+    @callback subscribe(String.t, String.t) :: :ok | {:error, atom()}
+    backend_fun :subscribe, [user_id, mbox]
+
+    @callback unsubscribe(String.t, String.t) :: :ok | {:error, atom()}
+    backend_fun :unsubscribe, [user_id, mbox]
+
+    @callback list_subscriptions(String.t, String.t, String.t) ::
+              {:ok, [String.t]} | {:error, atom()}
+    backend_fun :list_subscriptions, [user_id, reference, mbox]
+
     def basename(path) do
         sep = Skirnir.Imap.folder_sep()
         path

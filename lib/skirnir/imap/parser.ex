@@ -29,7 +29,6 @@ defmodule Skirnir.Imap.Parser do
     end
     def command([tag, "LIST"|params]) do
         [reference, mbox] = get_params(Enum.join(params, " "))
-        Logger.debug("params: #{inspect([reference, mbox])}")
         {:list, tag, get_name(reference), get_name(mbox)}
     end
     def command([tag, "STATUS", mbox|items]) do
@@ -41,6 +40,12 @@ defmodule Skirnir.Imap.Parser do
             |> String.trim()
         end
         {:status, tag, mbox, items}
+    end
+    def command([tag, "SUBSCRIBE"|mbox]), do: {:subscribe, tag, get_name(mbox)}
+    def command([tag, "UNSUBSCRIBE"|mbox]), do: {:unsubscribe, tag, get_name(mbox)}
+    def command([tag, "LSUB"|params]) do
+        [reference, mbox] = get_params(Enum.join(params, " "))
+        {:lsub, tag, get_name(reference), get_name(mbox)}
     end
     def command([tag, command|_rest]), do: {:unknown, tag, command}
 

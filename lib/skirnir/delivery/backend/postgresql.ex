@@ -346,6 +346,60 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
+    def subscribe(users_id, full_path) do
+        case get_mailbox_id(users_id, full_path) do
+            nil -> {:error, :enotfound}
+            _mailboxes_id ->
+                query = """
+                        INSERT INTO subscriptions(users_id, mailbox)
+                        VALUES ($1, $2)
+                        """
+                case Postgrex.query(@conn, query, [users_id, full_path]) do
+                    {:ok, %Postgrex.Result{num_rows: 1}} -> :ok
+                    {:error, %Postgrex.Error{postgres: %{code: :not_null_violation}}} -> :ok
+                    {:error, error} ->
+                        Logger.error("[access] [uid:#{users_id}] subscribing " <>
+                                     "to #{full_path}: #{inspect(error)}")
+                        {:error, error}
+                end
+        end
+    end
+
+    def unsubscribe(users_id, full_path) do
+        query = """
+                DELETE FROM subscriptions
+                WHERE users_id = $1 AND mailbox = $2
+                """
+        case Postgrex.query(@conn, query, [users_id, full_path]) do
+            {:ok, %Postgrex.Result{num_rows: 1}} -> :ok
+            {:ok, _} -> {:error, :enotfound}
+            {:error, error} ->
+                Logger.error("[access] [uid:#{users_id}] unsubscribing " <>
+                             "from #{full_path}: #{inspect(error)}")
+                {:error, error}
+        end
+    end
+
+    def list_subscriptions(_users_id, "", ""), do: {:ok, []}
+    def list_subscriptions(users_id, "", wildcard) do
+        full_path_like = wildcard_to_query(wildcard)
+        query = """
+                SELECT mailbox
+                FROM subscriptions
+                WHERE users_id = $1 AND mailbox ~ $2
+                """
+        case Postgrex.query(@conn, query, [users_id, full_path_like]) do
+            {:ok, %Postgrex.Result{rows: rows}} -> {:ok, rows}
+            {:error, error} ->
+                Logger.error("[access] [uid:#{users_id}] listing " <>
+                             "subscriptions: #{inspect(error)}")
+                {:error, error}
+        end
+    end
+    def list_subscriptions(users_id, reference, wildcard) do
+        list_subscriptions(users_id, "", Path.join(reference, wildcard))
+    end
+
     def get(_user, id) do
         Logger.error("[delivery] [#{id}] no backend!")
         {:error, :notimpl}

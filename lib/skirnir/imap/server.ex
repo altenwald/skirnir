@@ -379,6 +379,75 @@ defmodule Skirnir.Imap.Server do
         end
     end
 
+    def auth(:cast, {:subscribe, tag, mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        case DeliveryBackend.subscribe(user_id, mbox) do
+            :ok ->
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] subscribed " <>
+                             "to #{mbox}")
+                msg = "#{tag} OK SUBSCRIBE completed\r\n"
+                transport.send(socket, msg)
+                {:keep_state_and_data, timeout()}
+            {:error, :enotfound} ->
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] " <>
+                            "mailbox '#{mbox}' doesn't exist")
+                msg = "#{tag} NO subscribe failure; " <>
+                      "cannot subscribe that name\r\n"
+                transport.send(socket, msg)
+                {:keep_state_and_data, timeout()}
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
+                {:stop, :normal, state_data}
+        end
+    end
+
+    def auth(:cast, {:unsubscribe, tag, mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        case DeliveryBackend.unsubscribe(user_id, mbox) do
+            :ok ->
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] unsubscribed " <>
+                             "from #{mbox}")
+                msg = "#{tag} OK UNSUBSCRIBE completed\r\n"
+                transport.send(socket, msg)
+                {:keep_state_and_data, timeout()}
+            {:error, :enotfound} ->
+                Logger.warn("[imap] [#{id}] [#{user}] [#{tag}] " <>
+                            "mailbox '#{mbox}' doesn't exist")
+                msg = "#{tag} NO unsubscribe failure; " <>
+                      "cannot unsubscribe that name\r\n"
+                transport.send(socket, msg)
+                {:keep_state_and_data, timeout()}
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
+                {:stop, :normal, state_data}
+        end
+    end
+
+    def auth(:cast, {:lsub, tag, reference, mbox}, state_data) do
+        %StateData{id: id, user: user, user_id: user_id, socket: socket,
+                   transport: transport} = state_data
+        case DeliveryBackend.list_subscriptions(user_id, reference, mbox) do
+            {:ok, subscriptions} ->
+                Logger.debug("[imap] [#{id}] [#{user}] [#{tag}] listing " <>
+                             "#{length(subscriptions)} subscriptions")
+                Enum.map(subscriptions, fn([full_path]) ->
+                    full_path_enclosed = JSON.encode!(full_path)
+                    msg = "* LSUB () \".\" #{full_path_enclosed}\r\n"
+                    transport.send(socket, msg)
+                end)
+                transport.send(socket, "#{tag} OK LSUB completed\r\n")
+                {:keep_state_and_data, timeout()}
+            {:error, error} ->
+                Logger.error("[imap] [#{id}] [#{user}] error in #{mbox}: " <>
+                             "#{inspect(error)}")
+                {:stop, :normal, state_data}
+        end
+    end
+
     def auth(type, whatever, state_data) do
         noauth(type, whatever, state_data)
     end

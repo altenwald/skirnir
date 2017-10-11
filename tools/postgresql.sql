@@ -37,6 +37,14 @@ CREATE TABLE emails (
     uid integer NOT NULL UNIQUE
 );
 
+CREATE TABLE subscriptions (
+    id serial NOT NULL PRIMARY KEY,
+    users_id INT REFERENCES users(id) NOT NULL,
+    mailbox varchar(128) NOT NULL
+);
+
+CREATE UNIQUE INDEX ON subscriptions(users_id, mailbox);
+
 CREATE OR REPLACE FUNCTION update_mailbox_parent_path() RETURNS TRIGGER AS $$
     DECLARE
         path ltree;
