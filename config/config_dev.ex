@@ -33,8 +33,10 @@ config :skirnir,
     # imap4 server
     imap_port: 1145,
 
-    # domain for the emails
-    domain: "altenwald.com",
+    # domains for the emails
+    domains: [
+        "altenwald.com"
+    ],
 
     # hostname of the server handling the emails
     hostname: "elm.altenwald.com",

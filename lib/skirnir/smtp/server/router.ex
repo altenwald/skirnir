@@ -8,14 +8,17 @@ defmodule Skirnir.Smtp.Server.Router do
 
     def process(id) do
         mail = QueueStorage.get(id)
-        domain = Application.get_env(:skirnir, :domain)
-        Enum.each(mail.recipients, fn({recipient, to_domain}) ->
-            if to_domain != domain do
-                process_relay(recipient, id, mail)
-            else
-                process_mda(recipient, id, mail)
-            end
+        domains = Application.get_env(:skirnir, :domains)
+        {to_mda, to_relay} = mail.receipients
+        |> Enum.split_with(fn({_, to_domain}) ->
+            Enum.any? domains, fn(domain) -> domain == to_domain end
         end)
+        Enum.each to_mda, fn({recipient, _}) ->
+            process_mda(recipient, id, mail)
+        end
+        Enum.each to_relay, fn({recipient, _}) ->
+            process_relay(recipient, id, mail)
+        end
     end
 
     def process_relay(_recipient, id, _mail) do
