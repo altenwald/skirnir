@@ -21,7 +21,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                 UPDATE emails e1
                 SET flags = array_remove(e1.flags, '\\Recent')
                 FROM (
-                    SELECT *
+                    SELECT e2.id
                     FROM emails e2
                     WHERE users_id = $2
                     AND mailboxes_id = $1
