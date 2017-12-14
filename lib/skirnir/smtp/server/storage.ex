@@ -32,7 +32,7 @@ defmodule Skirnir.Smtp.Server.Storage do
     def init_agent() do
         storage = Application.get_env(:skirnir, :queue_storage, "db")
         {:ok, db} = open(storage)
-        Logger.debug("[queue-storage] init #{name()}")
+        Logger.debug ["[queue-storage] init ", name()]
         db
     end
 

@@ -68,7 +68,7 @@ defmodule Skirnir.Smtp.Server do
                    transport: transport,
                    hostname: hostname} = state_data
         :ok = :ranch.accept_ack(ref)
-        Logger.debug("[smtp] [#{id}] accepted connection")
+        Logger.debug ["[smtp] [", id, "] accepted connection"]
         transport.send(socket, error(220, nil, hostname))
         transport.setopts(socket, [{:active, :once}])
         {:next_state, :hello, state_data}
@@ -80,7 +80,7 @@ defmodule Skirnir.Smtp.Server do
     def hello(:cast, {:hello, host}, state_data) do
         %StateData{send: send, hostname: hostname, id: id} = state_data
         # TODO: check host or not, depending on configuration
-        Logger.debug("[smtp] [#{id}] received HELO: #{host}")
+        Logger.debug ["[smtp] [", id, "] received HELO: ", host]
         send.("250 #{hostname}\r\n")
         {:next_state, :mail_from,
          %StateData{state_data | host: host, tries: @tries}}
@@ -89,7 +89,7 @@ defmodule Skirnir.Smtp.Server do
     def hello(:cast, {:hello_extended, host}, %StateData{tls: false} = state_data) do
         %StateData{send: send, hostname: hostname, id: id} = state_data
         # TODO: check host or not, depending on configuration
-        Logger.debug("[smtp] [#{id}] received EHLO: #{host}")
+        Logger.debug ["[smtp] [#{id}] received EHLO: ", host]
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
         send.("250-#{hostname}\r\n" <>
@@ -108,7 +108,7 @@ defmodule Skirnir.Smtp.Server do
     def hello(:cast, {:hello_extended, host}, state_data) do
         %StateData{send: send, hostname: hostname, id: id} = state_data
         # TODO: check host or not, depending on configuration
-        Logger.debug("[smtp] [#{id}] received via TLS EHLO: #{host}")
+        Logger.debug ["[smtp] [", id, "] received via TLS EHLO: ", host]
         # TODO: add extensions based on developed extensions and configuration
         # TODO: add PIPELINING
         send.("250-#{hostname}\r\n" <>
@@ -135,7 +135,7 @@ defmodule Skirnir.Smtp.Server do
         Logger.error("[smtp] [#{id}] [hello] invalid command: " <>
                      "#{inspect(whatever)}")
         send.(error(503))
-        {:keep_state, %StateData{state_data | tries: tries - 1 }}
+        {:keep_state, %StateData{state_data | tries: tries - 1}}
     end
 
     # --------------------------------------------------------------------------
@@ -157,7 +157,7 @@ defmodule Skirnir.Smtp.Server do
         :keep_state_and_data
     end
 
-    def mail_from(:cast, _whatever, %StateData{tries: 0}=state_data) do
+    def mail_from(:cast, _whatever, %StateData{tries: 0} = state_data) do
         %StateData{send: send, id: id} = state_data
         Logger.error("[smtp] [#{id}] [mail_from] too much fails")
         send.(error(221, "2.7.0"))
@@ -169,7 +169,7 @@ defmodule Skirnir.Smtp.Server do
         Logger.error("[smtp] [#{id}] [mail_from] invalid command: " <>
                      "#{inspect(whatever)}")
         send.(error(502, "5.5.2"))
-        {:keep_state, %StateData{state_data | tries: tries - 1 }}
+        {:keep_state, %StateData{state_data | tries: tries - 1}}
     end
 
     # --------------------------------------------------------------------------
@@ -199,12 +199,12 @@ defmodule Skirnir.Smtp.Server do
     end
 
     def rcpt_to(:cast, :data, state_data) do
-        Logger.debug("[smtp] [#{state_data.id}] sending DATA")
+        Logger.debug ["[smtp] [", state_data.id, "] sending DATA"]
         state_data.send.(error(354))
         {:next_state, :data, state_data}
     end
 
-    def rcpt_to(:cast, _whatever, %StateData{tries: 0}=state_data) do
+    def rcpt_to(:cast, _whatever, %StateData{tries: 0} = state_data) do
         %StateData{send: send, id: id} = state_data
         Logger.error("[smtp] [#{id}] [rcpt_to] too much fails")
         send.(error(221, "2.7.0"))
@@ -216,7 +216,7 @@ defmodule Skirnir.Smtp.Server do
         Logger.error("[smtp] [#{id}] [rcpt_to] invalid command: " <>
                      "#{inspect(whatever)}")
         send.(error(554, "5.5.1"))
-        {:keep_state, %StateData{state_data | tries: tries - 1 }}
+        {:keep_state, %StateData{state_data | tries: tries - 1}}
     end
 
     # --------------------------------------------------------------------------
@@ -242,7 +242,7 @@ defmodule Skirnir.Smtp.Server do
         Logger.error("[smtp] [data] trying to send another command, " <>
                      "maybe hacking?")
         send.(error(502, "5.5.2"))
-        {:keep_state, %StateData{state_data | tries: tries - 1 }}
+        {:keep_state, %StateData{state_data | tries: tries - 1}}
     end
 
     # --------------------------------------------------------------------------
@@ -301,17 +301,17 @@ defmodule Skirnir.Smtp.Server do
     #---------------------------------------------------------------------------
     def handle_event(:info, {trans, _port, newdata}, _state_name, state_data) do
         %StateData{socket: socket, transport: transport} = state_data
-        Logger.debug("[smtp] [#{state_data.id}] received: #{inspect(newdata)}")
+        Logger.debug ["[smtp] [", state_data.id, "] received: ", inspect(newdata)]
         case parse(newdata) do
             :starttls when trans == :tcp ->
-                Logger.debug("[smtp] [#{state_data.id}] changing to TLS")
+                Logger.debug ["[smtp] [", state_data.id, "] changing to TLS"]
                 transport.setopts(socket, [{:active, :false}])
                 state_data.send.("220 2.0.0 Ready to start TLS\n")
                 {:ok, ssl_socket} = Tls.accept(socket)
                 transport = :ranch_ssl
                 transport.setopts(ssl_socket, [{:active, :once}])
                 send = fn(data) -> :ranch_ssl.send(ssl_socket, data) end
-                Logger.debug("[smtp] [#{state_data.id}] changed to TLS")
+                Logger.debug ["[smtp] [", state_data.id, "] changed to TLS"]
                 {:next_state, :hello,
                  %StateData{state_data | transport: :ssl,
                                          send: send,

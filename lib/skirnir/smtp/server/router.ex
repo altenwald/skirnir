@@ -20,11 +20,11 @@ defmodule Skirnir.Smtp.Server.Router do
 
     def process_relay(_recipient, id, _mail) do
         # TODO process the email via smtp.client
-        Logger.debug("[router] [#{id}] sending to smtp client (relay)")
+        Logger.debug ["[router] [", id, "] sending to smtp client (relay)"]
     end
 
     def process_mda(recipient, id, mail) do
-        Logger.debug("[router] [#{id}] processing locally (MDA)")
+        Logger.debug ["[router] [", id, "] processing locally (MDA)"]
         # TODO process the delivery rules to set the path or action to be
         #      done in the message
         path = "INBOX"

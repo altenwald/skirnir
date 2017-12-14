@@ -17,13 +17,13 @@ defmodule Skirnir.Backend.Postgresql do
     end
 
     def timex_to_pgsql(datetime) do
-        {{y,m,d},{h,i,s}} = Timex.to_erl(datetime)
+        {{y, m, d}, {h, i, s}} = Timex.to_erl(datetime)
         %Postgrex.Timestamp{day: d, hour: h, min: i, month: m, sec: s, year: y}
     end
 
     def pgsql_to_timex(%Postgrex.Timestamp{day: d, hour: h, min: i, month: m,
                                             sec: s, year: y}) do
-        Timex.to_datetime {{y,m,d},{h,i,s}}
+        Timex.to_datetime {{y, m, d}, {h, i, s}}
     end
 
 end

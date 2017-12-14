@@ -96,7 +96,7 @@ defmodule Skirnir.Smtp.Email do
         value = "from #{data.host} (#{data.remote_name} [#{data.address}]) " <>
                 "by #{data.hostname} (Skirnir) with SMTP id #{data.id} " <>
                 case data.recipients do
-                    [{recipient,_}] -> "for <#{recipient}>; "
+                    [{recipient, _}] -> "for <#{recipient}>; "
                     _ -> ""
                 end <>
                 Timex.format!(timestamp,

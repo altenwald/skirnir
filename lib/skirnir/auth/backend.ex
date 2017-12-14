@@ -1,5 +1,10 @@
 defmodule Skirnir.Auth.Backend do
 
+    @moduledoc """
+    Backend module to let to the system use whatever implementation for auth
+    in the whole system based on configuration.
+    """
+
     @default_backend Skirnir.Auth.Backend.Postgresql
 
     use Skirnir.Backend.AutoGenerate

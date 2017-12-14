@@ -32,7 +32,9 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                 """
         case Postgrex.query(@conn, query, [mailboxes_id, users_id, recent]) do
             {:ok, %Postgrex.Result{num_rows: ^recent}} ->
-                Logger.debug("[delivery] [uid:#{users_id}] [mboxid:#{mailboxes_id}] mark #{recent} messages as not recent")
+                Logger.debug("[delivery] [uid:#{users_id}] " <>
+                             "[mboxid:#{mailboxes_id}] " <>
+                             "mark #{recent} messages as not recent")
                 recent
             {:ok, %Postgrex.Result{num_rows: num_rows}} ->
                 Logger.warn("[delivery] [uid:#{users_id}] error changing recent in mailbox:#{mailboxes_id}")
@@ -288,7 +290,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                 WHERE mailboxes_id = (SELECT id
                                     FROM mailboxes
                                     WHERE full_path = $2 AND users_id = $3)
-                """;
+                """
         case Postgrex.query(@conn, query, [mailboxes_id, "INBOX", users_id]) do
             {:ok, _} ->
                 Logger.debug("[access] [uid:#{users_id}] moved INBOX elements " <>
@@ -314,9 +316,13 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
         end
     end
 
-    def put(user, id, email, path) do
-        Logger.debug("[delivery] [#{id}] [postgresql] save in #{user}[#{path}]")
+    def put(user, id, email, path) when is_binary(user) do
+        Logger.debug ["[delivery] [", id, "] [postgresql] save in ", user,
+                      "[", path, "]"]
         users_id = Skirnir.Auth.Backend.get_id(user)
+        put(users_id, id, email, path)
+    end
+    def put(users_id, id, email, path) when is_integer(users_id) do
         mailboxes_id = get_mailbox_id(users_id, path)
         {:ok, uid} = reserve_uid(mailboxes_id)
         query =

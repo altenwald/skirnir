@@ -32,13 +32,13 @@ defmodule Skirnir.Imap.Server do
                   send: nil,
                   tls: false,
                   # mailbox selected
-                  mbox_select: nil
+                  mbox_select: nil,
+                  literal: nil
     end
 
     def gen_session_id() do
-        Hashids.new(salt: @salt,
-                    min_len: @min_len,
-                    alphabet: @alphabet)
+        [salt: @salt, min_len: @min_len, alphabet: @alphabet]
+        |> Hashids.new()
         |> Hashids.encode(:os.system_time(:micro_seconds))
     end
 
@@ -66,7 +66,7 @@ defmodule Skirnir.Imap.Server do
                    socket: socket,
                    transport: transport} = state_data
         :ok = :ranch.accept_ack(ref)
-        Logger.debug("[imap] [#{id}] accepted connection")
+        Logger.debug ["[imap] [", id, "] accepted connection"]
         caps = capabilities(state_data)
         transport.send(socket, "* OK [#{caps}] Skirnir ready.\r\n")
         transport.setopts(socket, [{:active, :once}])
@@ -78,7 +78,7 @@ defmodule Skirnir.Imap.Server do
                    socket: socket,
                    transport: transport} = state_data
         caps = capabilities(state_data)
-        Logger.debug("[imap] [#{id}] [#{tag}] #{caps}")
+        Logger.debug ["[imap] [", id, "] [", tag, "] ", caps]
         transport.send(socket, "* #{caps}\r\n")
         transport.send(socket, "#{tag} OK Pre-login capabilities listed, " <>
                                "post-login capabilities have more.\r\n")
@@ -87,7 +87,7 @@ defmodule Skirnir.Imap.Server do
 
     def noauth(:cast, {:noop, tag}, state_data) do
         %StateData{id: id, socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{tag}] NOOP")
+        Logger.debug ["[imap] [", id, "] [", tag, "] NOOP"]
         transport.send(socket, "#{tag} OK NOOP completed.\r\n")
         {:keep_state_and_data, timeout()}
     end
@@ -254,11 +254,11 @@ defmodule Skirnir.Imap.Server do
     def auth(:cast, {:delete, tag, mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket,
                    transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
-                     "creating #{mbox}")
+        Logger.debug "[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "creating #{mbox}"
         case DeliveryBackend.delete_mailbox(user_id, mbox) do
             :ok ->
-                Logger.debug("[imap] [#{id}] [#{user}] deleted #{mbox}")
+                Logger.debug ["[imap] [", id, "] [", user, "] deleted ", mbox]
                 transport.send(socket, "#{tag} OK DELETE completed.\r\n")
             {:error, :enotfound} ->
                 Logger.warn("[imap] [#{id}] [#{user}] not found #{mbox} to " <>
@@ -281,11 +281,12 @@ defmodule Skirnir.Imap.Server do
     def auth(:cast, {:rename, tag, "INBOX", new_mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket,
                    transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] moving " <>
-                     "INBOX emails to #{new_mbox}")
+        Logger.debug "[imap] [#{id}] [#{state_data.user}] [#{tag}] moving " <>
+                     "INBOX emails to #{new_mbox}"
         case DeliveryBackend.move_inbox_to(user_id, new_mbox) do
             :ok ->
-                Logger.debug("[imap] [#{id}] [#{user}] moved to #{new_mbox}")
+                Logger.debug ["[imap] [", id, "] [", user, "] moved to ",
+                              new_mbox]
                 transport.send(socket, "#{tag} OK RENAME completed.\r\n")
             {:error, error} ->
                 Logger.error("[imap] [#{id}] [#{user}] try moving INBOX " <>
@@ -298,11 +299,12 @@ defmodule Skirnir.Imap.Server do
     def auth(:cast, {:rename, tag, old_mbox, new_mbox}, state_data) do
         %StateData{id: id, user: user, user_id: user_id, socket: socket,
                    transport: transport} = state_data
-        Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] renaming " <>
-                     "#{old_mbox} to #{new_mbox}")
+        Logger.debug "[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
+                     "renaming #{old_mbox} to #{new_mbox}"
         case DeliveryBackend.rename_mailbox(user_id, old_mbox, new_mbox) do
             :ok ->
-                Logger.debug("[imap] [#{id}] [#{user}] renamed to #{new_mbox}")
+                Logger.debug ["[imap] [", id, "] [", user, "] renamed to ",
+                              new_mbox]
                 transport.send(socket, "#{tag} OK RENAME completed.\r\n")
             {:error, :eduplicated} ->
                 Logger.warn("[imap] [#{id}] [#{user}] rename isn't possible " <>
@@ -324,7 +326,8 @@ defmodule Skirnir.Imap.Server do
                      "creating #{mbox}")
         case DeliveryBackend.get_mailbox_info(user_id, mbox) do
             {:ok, _id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
-                info = List.foldl(items, "",
+                info = items
+                |> List.foldl("",
                     fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} "
                       ("RECENT", res) -> res <> "RECENT #{msg_recent} "
                       ("UIDNEXT", res) -> res <> "UIDNEXT #{uid_next} "
@@ -332,8 +335,10 @@ defmodule Skirnir.Imap.Server do
                         res <> "UIDVALIDITY #{uid_validity} "
                       ("UNSEEN", res) -> res <> "UNSEEN #{unseen} "
                       (_, res) -> res
-                    end) |> String.rstrip()
-                Logger.debug("[imap] [#{id}] [#{user}] status #{mbox}: #{info}")
+                    end)
+                |> String.rstrip()
+                Logger.debug ["[imap] [", id, "] [", user, "] status ",
+                              mbox, ": ", info]
                 transport.send(socket, "* STATUS #{mbox} (#{info})\r\n" <>
                                        "#{tag} OK STATUS completed\r\n")
                 {:keep_state_and_data, timeout()}
@@ -480,23 +485,26 @@ defmodule Skirnir.Imap.Server do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
+
     def handle_event(:info, {:ssl_closed, _socket}, _state, state_data) do
         Logger.info("[imap] [#{state_data.id}] closed by remote peer.")
         {:stop, :normal, state_data}
     end
-    def handle_event(:info, {trans, _port, newdata}, state_name, state_data) do
+
+    def handle_event(:info, {trans, _port, newdata}, state_name,
+                     %StateData{literal: nil} = state_data) do
         %StateData{socket: socket, transport: transport} = state_data
-        Logger.debug("[imap] [#{state_data.id}] received: #{inspect(newdata)}")
+        Logger.debug ["[imap] [", state_data.id, "] received: ", inspect(newdata)]
         case parse(newdata) do
             {:starttls, tag} when trans == :tcp ->
-                Logger.debug("[imap] [#{state_data.id}] changing to TLS")
+                Logger.debug ["[imap] [", state_data.id, "] changing to TLS"]
                 transport.setopts(socket, [{:active, :false}])
                 state_data.send.("#{tag} OK Begin TLS negotiation now.\r\n")
                 {:ok, ssl_socket} = Tls.accept(socket)
                 transport = :ranch_ssl
                 transport.setopts(ssl_socket, [{:active, :once}])
                 send = fn(data) -> :ranch_ssl.send(ssl_socket, data) end
-                Logger.debug("[imap] [#{state_data.id}] changed to TLS")
+                Logger.debug ["[imap] [", state_data.id, "] changed to TLS"]
                 {:next_state, :noauth,
                  %StateData{state_data | transport: :ssl,
                                          send: send,

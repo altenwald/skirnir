@@ -1,6 +1,10 @@
 defmodule Skirnir.Auth.Backend.Postgresql do
     use Skirnir.Auth.Backend
 
+    @moduledoc """
+    Backend to use PostgreSQL for authentication purposes.
+    """
+
     @conn Skirnir.Backend.Postgresql
 
     def init() do
@@ -18,11 +22,11 @@ defmodule Skirnir.Auth.Backend.Postgresql do
             """
         case Postgrex.query @conn, query, [user, pass] do
             {:ok, %Postgrex.Result{rows: [[id]]}} ->
-                Logger.info("[auth] access granted for #{user}")
+                Logger.info ["[auth] access granted for ", user]
                 {:ok, id}
             _ ->
-                Logger.error("[auth] access denied for #{user}")
-                Logger.debug("[auth] invalid pass: #{pass}")
+                Logger.error ["[auth] access denied for ", user]
+                Logger.debug ["[auth] invalid pass: ", pass]
                 {:error, :enotfound}
         end
     end

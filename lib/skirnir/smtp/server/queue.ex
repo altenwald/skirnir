@@ -61,7 +61,7 @@ defmodule Skirnir.Smtp.Server.Queue do
     def handle_call(:dequeue, _from, {timer, []}), do:
         {:reply, :nil, add_timer(timer, [])}
 
-    def handle_call(:dequeue, _from, {timer, [{mail_id,_}|queue]}) do
+    def handle_call(:dequeue, _from, {timer, [{mail_id, _}|queue]}) do
         {:reply, mail_id, add_timer(timer, queue)}
     end
 
