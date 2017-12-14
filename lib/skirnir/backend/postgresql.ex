@@ -2,16 +2,21 @@ defmodule Skirnir.Backend.Postgresql do
 
     @conn __MODULE__
 
+    def get_types_module do
+        ext = []
+        if not Code.ensure_compiled?(Skirnir.Backend.Postgresql.Extensions) do
+            Postgrex.Types.define(Skirnir.Backend.Postgresql.Extensions, ext, [])
+        end
+        Skirnir.Backend.Postgresql.Extensions
+    end
+
     def init() do
         {:ok, _} = Application.ensure_all_started(:postgrex)
         dbconf = Application.get_env(:skirnir, :backend_postgrex)
         child = Postgrex.child_spec(Keyword.merge(dbconf, [
-            types: true,
+            types: get_types_module(),
             name: @conn,
-            pool: DBConnection.Connection,
-            extensions: [
-                {Skirnir.Backend.Postgresql.Ltree, []}
-            ]
+            pool: DBConnection.Connection
         ]))
         Supervisor.start_child(Skirnir.Supervisor, child)
     end

@@ -42,13 +42,13 @@ defmodule Skirnir.Mixfile do
      {:syslog, github: "altenwald/syslog"},
 
      # delivery postgresql backend:
-     {:postgrex, "~> 1.0.0-rc.1"},
+     {:postgrex, "~> 0.13.3"},
 
      # workers pool
      {:poolboy, "~> 1.5.0"},
 
      # test deps:
-     {:credo, only: :dev},
+     {:credo, "~> 0.8.10", only: :dev},
      {:excoveralls, "~> 0.7.3", only: :test},
      {:gen_smtp, "~> 0.12.0", only: :test},
      {:eimap, "~> 0.4.0", github: "altenwald/eimap", only: :test}]

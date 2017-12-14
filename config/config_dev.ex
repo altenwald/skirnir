@@ -65,10 +65,10 @@ config :skirnir,
     # config to connect to PostgreSQL:
     backend_postgrex: [
         hostname: "localhost",
-        username: "myapp",
-        password: "dbpass",
-        database: "myapp",
-        port: 15432
+        username: "skirnir",
+        password: "skirnir",
+        database: "skirnir",
+        port: 5432
     ],
 
     # message should be retried in X seconds
