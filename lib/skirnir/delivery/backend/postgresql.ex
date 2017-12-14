@@ -3,7 +3,9 @@ require Timex
 defmodule Skirnir.Delivery.Backend.Postgresql do
     use Skirnir.Delivery.Backend
 
-    import Skirnir.Backend.Postgresql, only: [timex_to_pgsql: 1]
+    import Skirnir.Backend.Postgresql,
+           only: [timex_to_pgsql: 1,
+                  wildcard_to_query: 1]
 
     alias Skirnir.Smtp.Email
 
@@ -19,7 +21,7 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                 UPDATE emails e1
                 SET flags = array_remove(e1.flags, '\\Recent')
                 FROM (
-                    SELECT *
+                    SELECT e2.id
                     FROM emails e2
                     WHERE users_id = $2
                     AND mailboxes_id = $1
@@ -44,23 +46,6 @@ defmodule Skirnir.Delivery.Backend.Postgresql do
                 0
         end
     end
-
-    def wildcard_to_query(wildcard) do
-        wildcard
-        |> Regex.escape()
-        |> wildcard_to_query("")
-    end
-
-    def wildcard_to_query("\\*" <> rest, result) do
-        wildcard_to_query(rest, result <> ".+")
-    end
-    def wildcard_to_query("%" <> rest, result) do
-        wildcard_to_query(rest, result <> "[^/]+")
-    end
-    def wildcard_to_query(<<a::binary - size(1), rest::binary()>>, result) do
-        wildcard_to_query(rest, result <> a)
-    end
-    def wildcard_to_query("", result), do: "^#{result}$"
 
     def list_mailboxes(_users_id, "", ""), do: {:ok, [["/", "", "\\Noselect"]]}
     def list_mailboxes(users_id, "", wildcard) do

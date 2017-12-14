@@ -28,7 +28,7 @@ defmodule Skirnir.Smtp.Server do
                   # closures
                   send: nil,
                   # config
-                  domain: nil,
+                  domains: [],
                   hostname: nil,
                   tries: 0,
                   # sent by client
@@ -44,7 +44,7 @@ defmodule Skirnir.Smtp.Server do
 
     def init([ref, socket, transport]) do
         Logger.debug("[smtp] start worker")
-        domain = Application.get_env(:skirnir, :domain)
+        domains = Application.get_env(:skirnir, :domains)
         hostname = Application.get_env(:skirnir, :hostname)
         send = fn(data) -> transport.send(socket, data) end
         {address, name} = gethostinfo(socket)
@@ -56,7 +56,7 @@ defmodule Skirnir.Smtp.Server do
                                 remote_name: name,
                                 transport: transport,
                                 send: send,
-                                domain: domain,
+                                domains: domains,
                                 hostname: hostname,
                                 tries: @tries},
          {:next_event, :cast, {:init, ref}}}
@@ -142,7 +142,7 @@ defmodule Skirnir.Smtp.Server do
     # mail_from state
     # --------------------------------------------------------------------------
     def mail_from(:cast, {:mail_from, from, _from_domain}, state_data) do
-        %StateData{send: send, domain: _domain, id: id} = state_data
+        %StateData{send: send, id: id} = state_data
         # TODO: if from is in the same domain, needs auth?
         Logger.info("[smtp] [#{id}] mail from: <#{from}>")
         send.(error(250))
@@ -176,9 +176,12 @@ defmodule Skirnir.Smtp.Server do
     # rcpt_to state
     # --------------------------------------------------------------------------
     def rcpt_to(:cast, {:rcpt_to, to, to_domain}, state_data) do
-        %StateData{send: send, domain: domain, id: id} = state_data
+        %StateData{send: send, domains: domains, id: id} = state_data
+        is_valid_domain = to_domain in domains
+        Logger.debug("[smtp] [#{id}] checking #{inspect(to_domain)} against " <>
+                     "#{inspect(domains)}: #{inspect(is_valid_domain)}")
         case Application.get_env(:skirnir, :relay, false) do
-            false when domain != to_domain ->
+            false when not is_valid_domain ->
                 Logger.error("[smtp] [#{id}] relay is not permitted")
                 send.(error(554, "5.7.1", to))
                 :keep_state_and_data

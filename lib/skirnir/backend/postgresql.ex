@@ -26,4 +26,21 @@ defmodule Skirnir.Backend.Postgresql do
         Timex.to_datetime {{y, m, d}, {h, i, s}}
     end
 
+    def wildcard_to_query(wildcard) do
+        wildcard
+        |> Regex.escape()
+        |> wildcard_to_query("")
+    end
+
+    def wildcard_to_query("\\*" <> rest, result) do
+        wildcard_to_query(rest, result <> ".+")
+    end
+    def wildcard_to_query("%" <> rest, result) do
+        wildcard_to_query(rest, result <> "[^/]+")
+    end
+    def wildcard_to_query(<<a::binary - size(1), rest::binary()>>, result) do
+        wildcard_to_query(rest, result <> a)
+    end
+    def wildcard_to_query("", result), do: "^#{result}$"
+
 end

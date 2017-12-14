@@ -11,7 +11,7 @@ File.rm_rf "test/db"
 
 config :skirnir, smtp_port: 2525,
                  imap_port: 1145,
-                 domain: "altenwald.com",
+                 domains: [ "altenwald.com" ],
                  hostname: "test.altenwald.com",
                  relay: false,
                  queue_threshold: 50,
