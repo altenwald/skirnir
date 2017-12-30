@@ -10,7 +10,7 @@ defmodule Skirnir.Imap do
   @doc """
   Wrap for start ranch listeners
   """
-  def start_link(), do: start_link(@options, @protocol)
+  def start_link, do: start_link(@options, @protocol)
 
   def start_link(options, protocol) do
     options = port(options)
@@ -27,7 +27,7 @@ defmodule Skirnir.Imap do
     end
   end
 
-  def folder_sep() do
+  def folder_sep do
     Application.get_env(:skirnir, :folder_sep, @folder_sep)
   end
 end

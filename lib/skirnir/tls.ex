@@ -1,4 +1,7 @@
 defmodule Skirnir.Tls do
+    @moduledoc """
+    Ensure the TCP socket is elevated to TLS connection.
+    """
 
     @timeout 5000
 
@@ -19,7 +22,7 @@ defmodule Skirnir.Tls do
         :ssl.ssl_accept(socket, options, @timeout)
     end
 
-    def get_keyfile() do
+    def get_keyfile do
         case Application.get_env(:skirnir, :tls_key_file, nil) do
             keyfile when is_binary(keyfile) ->
                 String.to_charlist keyfile
@@ -28,7 +31,7 @@ defmodule Skirnir.Tls do
         end
     end
 
-    def get_certfile() do
+    def get_certfile do
         case Application.get_env(:skirnir, :tls_cert_file, nil) do
             certfile when is_binary(certfile) ->
                 String.to_charlist certfile

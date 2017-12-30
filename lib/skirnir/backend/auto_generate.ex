@@ -1,8 +1,15 @@
 defmodule Skirnir.Backend.AutoGenerate do
+    @moduledoc """
+    AutoGenerate is a helper to generate backends easily. The macro included in
+    this module like `backend_cfg` help to simplify the creation of the backend
+    modules.
+    """
+
     defmacro __using__(_data) do
         quote do
             require Skirnir.Backend.AutoGenerate
-            import Skirnir.Backend.AutoGenerate, only: [backend_fun: 2, backend_cfg: 1]
+            import Skirnir.Backend.AutoGenerate, only: [backend_fun: 2,
+                                                        backend_cfg: 1]
 
             defmacro __using__(_opts) do
                 quote do
@@ -14,11 +21,11 @@ defmodule Skirnir.Backend.AutoGenerate do
 
     defmacro backend_cfg(option) do
         quote do
-            defp backend() do
+            defp backend do
                 Application.get_env(:skirnir, unquote(option), @default_backend)
             end
 
-            def init() do
+            def init do
                 apply(backend(), :init, [])
             end
         end

@@ -6,7 +6,7 @@ defmodule Skirnir.Auth.Backend.Dummy do
     """
     use Skirnir.Auth.Backend
 
-    def init() do
+    def init do
         Logger.info("[auth] [dummy] initiated")
     end
 

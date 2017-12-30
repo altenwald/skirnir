@@ -1,15 +1,19 @@
-require Logger
-
 defmodule Skirnir.Smtp do
+  @moduledoc """
+  Creates the server to accept SMTP incoming connections from clients. This
+  module is only on charge to launch (and stop) the listener and get the
+  config info from file.
+  """
+
+  require Logger
 
   @options [port: 2525]
   @protocol Skirnir.Smtp.Server
 
-
   @doc """
   Wrap for start ranch listeners
   """
-  def start_link(), do: start_link(@options, @protocol)
+  def start_link, do: start_link(@options, @protocol)
 
   def start_link(options, protocol) do
     options = port(options)
@@ -19,7 +23,7 @@ defmodule Skirnir.Smtp do
                            {:reuseaddr, true}])
   end
 
-  def stop() do
+  def stop do
     :ok = :ranch.stop_listener(:tcp_smtp)
   end
 

@@ -1,14 +1,16 @@
 defmodule Skirnir.Auth.Backend.Postgresql do
     use Skirnir.Auth.Backend
 
+    alias Skirnir.Backend.Postgresql
+
     @moduledoc """
     Backend to use PostgreSQL for authentication purposes.
     """
 
     @conn Skirnir.Backend.Postgresql
 
-    def init() do
-        Skirnir.Backend.Postgresql.init()
+    def init do
+        Postgresql.init()
         Logger.info("[auth] [postgresql] initiated")
     end
 

@@ -1,8 +1,14 @@
 defmodule Skirnir.Delivery.Backend do
+    @moduledoc """
+    Using `Skirnir.Backend.AutoGenerate` this module implementes through
+    `backend_cfg` and `backend_fun` macros the needed code to use the configured
+    backend for delivery.
+    """
 
     @default_backend Skirnir.Delivery.Backend.Postgresql
 
     use Skirnir.Backend.AutoGenerate
+    alias Skirnir.Imap
 
     backend_cfg :delivery_backend
 
@@ -17,7 +23,8 @@ defmodule Skirnir.Delivery.Backend do
     @callback delete(String.t, String.t) :: :ok | {:error, atom()}
     backend_fun :delete, [user, id]
 
-    @callback get_ids_by_path(String.t, String.t) :: [String.t] | {:error, atom()}
+    @callback get_ids_by_path(String.t, String.t) ::
+              [String.t] | {:error, atom()}
     backend_fun :get_ids_by_path, [user, path]
 
     @callback get_headers(String.t, String.t) :: map() | {:error, atom()}
@@ -34,7 +41,8 @@ defmodule Skirnir.Delivery.Backend do
     @callback delete_mailbox(String.t, String.t) :: :ok | {:error, atom()}
     backend_fun :delete_mailbox, [user_id, path]
 
-    @callback rename_mailbox(String.t, String.t, String.t) :: :ok | {:error, atom()}
+    @callback rename_mailbox(String.t, String.t, String.t) ::
+              :ok | {:error, atom()}
     backend_fun :rename_mailbox, [user_id, old_path, new_path]
 
     @callback move_inbox_to(String.t, String.t) :: :ok | {:error, atom()}
@@ -55,7 +63,7 @@ defmodule Skirnir.Delivery.Backend do
     backend_fun :list_subscriptions, [user_id, reference, mbox]
 
     def basename(path) do
-        sep = Skirnir.Imap.folder_sep()
+        sep = Imap.folder_sep()
         path
         |> String.trim(sep)
         |> String.split(sep)
@@ -64,7 +72,7 @@ defmodule Skirnir.Delivery.Backend do
     end
 
     def basepath(path) do
-        sep = Skirnir.Imap.folder_sep()
+        sep = Imap.folder_sep()
         path
         |> String.trim(sep)
         |> String.split(sep)

@@ -1,16 +1,24 @@
 defmodule Skirnir.Backend.Postgresql do
+    @moduledoc """
+    This backend module based on PostgreSQL is a base implementation for
+    PostgreSQL and ensures the configuration is set for Postgrex dependency
+    as well as we add different helper functions like `timex_to_pgsql`.
+    """
 
     @conn __MODULE__
 
+    alias Postgrex.Types, as: PgTypes
+    alias Skirnir.Backend.Postgresql.Extensions, as: PgExtensions
+
     def get_types_module do
         ext = []
-        if not Code.ensure_compiled?(Skirnir.Backend.Postgresql.Extensions) do
-            Postgrex.Types.define(Skirnir.Backend.Postgresql.Extensions, ext, [])
+        if not Code.ensure_compiled?(PgExtensions) do
+            PgTypes.define(PgExtensions, ext, [])
         end
-        Skirnir.Backend.Postgresql.Extensions
+        PgExtensions
     end
 
-    def init() do
+    def init do
         {:ok, _} = Application.ensure_all_started(:postgrex)
         dbconf = Application.get_env(:skirnir, :backend_postgrex)
         child = Postgrex.child_spec(Keyword.merge(dbconf, [

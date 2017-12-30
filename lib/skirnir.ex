@@ -1,6 +1,10 @@
-require Logger
-
 defmodule Skirnir do
+  @moduledoc """
+  Main module in charge to launch the supervisor for all of the Skirnir
+  infrastructure.
+  """
+
+  require Logger
   use Application
 
   @default_smtp_workers 10
@@ -10,7 +14,8 @@ defmodule Skirnir do
 
     Logger.info("[skirnir] start")
 
-    workers = Application.get_env(:skirnir, :smtp_workers, @default_smtp_workers)
+    workers = Application.get_env(:skirnir, :smtp_workers,
+                                  @default_smtp_workers)
 
     worker_config = [
       name: {:local, Skirnir.Smtp.Server.Pool},

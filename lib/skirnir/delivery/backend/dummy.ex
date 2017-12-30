@@ -1,6 +1,10 @@
-require Timex
-
 defmodule Skirnir.Delivery.Backend.Dummy do
+    @moduledoc """
+    If you need some specific mock for delivery this is a good module to
+    send store/retrieve deliverd mails. In use mainly for tests.
+    """
+
+    require Timex
     use Skirnir.Delivery.Backend
 
     # good data
@@ -15,7 +19,7 @@ defmodule Skirnir.Delivery.Backend.Dummy do
     @msg_exists 100
     @unseen 11
 
-    def init() do
+    def init do
         Logger.info("[delivery] [dummy] initiated")
     end
 
