@@ -1,9 +1,9 @@
 language: elixir
 script: "make bootstrap test"
 after_success: "bash <(curl -s https://codecov.io/bash)"
-otp_release: 19.3
+otp_release: 20.3
 elixir:
-  - 1.4.5
+  - 1.6.5
 notifications:
   slack:
     secure: R/DFvrTxdCqOtfQ9Fp9x21Dsd74nltDk98LR8Gq/hydJIR8IC6I62b8XLje74YFb0yjtXc6v3AIrZAu8WuLDn6fij+yGV0nRy4z3pZA2Sq9qN1QEZ2MYpRJWy36ZU4qf/ST3ZcUArIQr7hGslpSEJy7f6PhKajcU/5p97Ps3k2s=

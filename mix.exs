@@ -4,7 +4,7 @@ defmodule Skirnir.Mixfile do
   def project do
     [app: :skirnir,
      version: "0.0.1",
-     elixir: "~> 1.4",
+     elixir: "~> 1.6",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps(),
@@ -17,7 +17,7 @@ defmodule Skirnir.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :ranch, :timex, :erocksdb, :exleveldb,
+    [applications: [:logger, :ranch, :timex, :erocksdb,
                     :gen_state_machine],
      mod: {Skirnir, []}]
   end
@@ -26,17 +26,11 @@ defmodule Skirnir.Mixfile do
     [{:ranch, "~> 1.4.0"},
      {:hashids, "~> 2.0"},
      {:json, "~> 1.0.2"},
-     {:timex, "~> 3.1.24"},
+     {:timex, "~> 3.3"},
      {:gen_state_machine, "~> 2.0.1"},
 
-     # leveldb backend:
-     {:cuttlefish, override: true, github: "basho/cuttlefish", tag: "2.0.6"},
-     {:lager, override: true, github: "basho/lager", tag: "3.2.4"},
-     {:eleveldb, override: true, github: "basho/eleveldb", tag: "2.2.19", manager: :rebar},
-     {:exleveldb, "~> 0.6.0"},
-
      # rocksdb backend:
-     {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
+     {:erocksdb, github: "leo-project/erocksdb", manager: :rebar},
 
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},

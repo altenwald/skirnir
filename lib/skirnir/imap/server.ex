@@ -336,7 +336,7 @@ defmodule Skirnir.Imap.Server do
                       ("UNSEEN", res) -> res <> "UNSEEN #{unseen} "
                       (_, res) -> res
                     end)
-                |> String.rstrip()
+                |> String.trim_trailing()
                 Logger.debug ["[imap] [", id, "] [", user, "] status ",
                               mbox, ": ", info]
                 transport.send(socket, "* STATUS #{mbox} (#{info})\r\n" <>

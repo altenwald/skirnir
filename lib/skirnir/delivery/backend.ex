@@ -2,7 +2,7 @@ defmodule Skirnir.Delivery.Backend do
 
     @default_backend Skirnir.Delivery.Backend.Postgresql
 
-    use Skirnir.Backend.AutoGenerate
+    use Skirnir.Backend
 
     backend_cfg :delivery_backend
 

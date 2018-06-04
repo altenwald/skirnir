@@ -1,8 +1,8 @@
-defmodule Skirnir.Backend.AutoGenerate do
+defmodule Skirnir.Backend do
     defmacro __using__(_data) do
         quote do
-            require Skirnir.Backend.AutoGenerate
-            import Skirnir.Backend.AutoGenerate, only: [backend_fun: 2, backend_cfg: 1]
+            require Skirnir.Backend
+            import Skirnir.Backend, only: [backend_fun: 2, backend_cfg: 1]
 
             defmacro __using__(_opts) do
                 quote do

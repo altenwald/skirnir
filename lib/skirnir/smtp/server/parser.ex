@@ -5,11 +5,11 @@ defmodule Skirnir.Smtp.Server.Parser do
     end
 
     def command(<<"HELO ", _ :: binary()>>, <<_ :: size(40), host :: binary()>>) do
-        {:hello, String.strip(host)}
+        {:hello, String.trim(host)}
     end
 
     def command(<<"EHLO ", _ :: binary()>>, <<_ :: size(40), host :: binary()>>) do
-        {:hello_extended, String.strip(host)}
+        {:hello_extended, String.trim(host)}
     end
 
     def command(<<"STARTTLS", _ :: binary()>>, _), do: :starttls
@@ -35,14 +35,14 @@ defmodule Skirnir.Smtp.Server.Parser do
     def parse_header(data) do
         case Regex.run(~r/^([\x21-\x39\x3b-\x7e]+):(.+)$/, data) do
             [_, header, content] ->
-                {:header, String.strip(header), String.strip(content)}
+                {:header, String.trim(header), String.trim(content)}
             nil ->
-                {:continue, String.strip(data)}
+                {:continue, String.trim(data)}
         end
     end
 
     defp parse_email(email) do
-        case validate_email(String.strip(email)) do
+        case validate_email(String.trim(email)) do
             {:ok, email, host} -> [email, host]
             {:error, :bademail} -> {:error, :bademail}
         end

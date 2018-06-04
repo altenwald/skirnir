@@ -7,7 +7,7 @@ defmodule Skirnir.Auth.Backend do
 
     @default_backend Skirnir.Auth.Backend.Postgresql
 
-    use Skirnir.Backend.AutoGenerate
+    use Skirnir.Backend
 
     backend_cfg :auth_backend
 
