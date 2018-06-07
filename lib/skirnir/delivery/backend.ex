@@ -7,7 +7,7 @@ defmodule Skirnir.Delivery.Backend do
 
     @default_backend Skirnir.Delivery.Backend.Postgresql
 
-    use Skirnir.Backend.AutoGenerate
+    use Skirnir.Backend
     alias Skirnir.Imap
 
     backend_cfg :delivery_backend

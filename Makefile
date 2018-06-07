@@ -1,3 +1,5 @@
+CFLAGS := '-Wno-error'
+
 all: compile
 
 bootstrap:
@@ -5,7 +7,7 @@ bootstrap:
 	mix local.hex --force
 
 compile: deps
-	mix compile
+	CFLAGS=${CFLAGS} mix compile
 
 deps: mix.lock
 	mix deps.get

@@ -8,7 +8,7 @@ defmodule Skirnir.Smtp.Server.Storage do
 
     @default_backend Skirnir.Smtp.Server.Storage.Rocksdb
 
-    use Skirnir.Backend.AutoGenerate
+    use Skirnir.Backend
 
     backend_cfg :queue_backend
 
