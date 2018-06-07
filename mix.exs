@@ -30,7 +30,7 @@ defmodule Skirnir.Mixfile do
      {:gen_state_machine, "~> 2.0.1"},
 
      # rocksdb backend:
-     {:erocksdb, github: "leo-project/erocksdb", manager: :rebar},
+     {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
 
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},
