@@ -5,7 +5,7 @@ defmodule Skirnir.Backend.DBI do
     as well as we add different helper functions.
     """
 
-    def init(), do: :ok
+    def init, do: :ok
 
     def timex_to_dbi(timex), do: Timex.to_erl(timex)
 

@@ -36,7 +36,7 @@ defmodule Skirnir.Imap.Server do
                   literal: nil
     end
 
-    def gen_session_id() do
+    def gen_session_id do
         [salt: @salt, min_len: @min_len, alphabet: @alphabet]
         |> Hashids.new()
         |> Hashids.encode(:os.system_time(:micro_seconds))
@@ -196,9 +196,9 @@ defmodule Skirnir.Imap.Server do
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
                      "examining #{mbox}")
         case DeliveryBackend.get_mailbox_info(user_id, mbox) do
-            {:ok, mailbox_id, uid_next, uid_validity, msg_recent, msg_exists,
+            {:ok, mbox_id, uid_next, uid_validity, msg_recent, msg_exists,
              unseen} ->
-                sel_state_data = %StateData{state_data | mbox_select: mailbox_id}
+                sel_state_data = %StateData{state_data | mbox_select: mbox_id}
                 msg = "* #{msg_exists} EXISTS\r\n" <>
                       "* #{msg_recent} RECENT\r\n" <>
                       "#{unseen_info(unseen)}* OK [UIDVALIDITY " <>
@@ -325,7 +325,8 @@ defmodule Skirnir.Imap.Server do
         Logger.debug("[imap] [#{id}] [#{state_data.user}] [#{tag}] " <>
                      "creating #{mbox}")
         case DeliveryBackend.get_mailbox_info(user_id, mbox) do
-            {:ok, _id, uid_next, uid_validity, msg_recent, msg_exists, unseen} ->
+            {:ok, _id, uid_next, uid_validity, msg_recent,
+                  msg_exists, unseen} ->
                 info = items
                 |> List.foldl("",
                     fn("MESSAGES", res) -> res <> "MESSAGES #{msg_exists} "
@@ -561,7 +562,7 @@ defmodule Skirnir.Imap.Server do
         "AUTH=LOGIN"
     end
 
-    def flags() do
+    def flags do
         # TODO
         "\\Answered \\Flagged \\Deleted \\Seen \\Draft"
     end
@@ -569,7 +570,7 @@ defmodule Skirnir.Imap.Server do
     def unseen_info(nil), do: ""
     def unseen_info(unseen), do: "* OK [UNSEEN #{unseen}]\r\n"
 
-    defp timeout() do
+    defp timeout do
         Application.get_env(:skirnir, :imap_inactivity_timeout, @timeout) * 1000
     end
 

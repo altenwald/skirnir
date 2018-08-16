@@ -110,7 +110,9 @@ defmodule Skirnir.Smtp.Server do
   def hello(:cast, {:hello_extended, host}, state_data) do
     %StateData{send: send, hostname: hostname, id: id} = state_data
     # TODO: check host or not, depending on configuration
-    Logger.debug "[smtp] [#{id}] received via TLS EHLO: #{host}"
+    Logger.debug fn ->
+      "[smtp] [#{id}] received via TLS EHLO: #{host}"
+    end
     # TODO: add extensions based on developed extensions and configuration
     # TODO: add PIPELINING
     send.("250-#{hostname}\r\n" <>
@@ -303,17 +305,23 @@ defmodule Skirnir.Smtp.Server do
   #---------------------------------------------------------------------------
   def handle_event(:info, {trans, _port, newdata}, _state_name, state_data) do
     %StateData{socket: socket, transport: transport} = state_data
-    Logger.debug "[smtp] [#{state_data.id}] received: #{inspect(newdata)}"
+    Logger.debug fn ->
+      "[smtp] [#{state_data.id}] received: #{inspect(newdata)}"
+    end
     case parse(newdata) do
       :starttls when trans == :tcp ->
-        Logger.debug "[smtp] [#{state_data.id}] changing to TLS"
+        Logger.debug fn ->
+          "[smtp] [#{state_data.id}] changing to TLS"
+        end
         transport.setopts(socket, [{:active, :false}])
         state_data.send.("220 2.0.0 Ready to start TLS\n")
         {:ok, ssl_socket} = Tls.accept(socket)
         transport = :ranch_ssl
         transport.setopts(ssl_socket, [{:active, :once}])
         send = fn(data) -> RanchSsl.send(ssl_socket, data) end
-        Logger.debug "[smtp] [#{state_data.id}] changed to TLS"
+        Logger.debug fn ->
+          "[smtp] [#{state_data.id}] changed to TLS"
+        end
         {:next_state, :hello,
          %StateData{state_data | transport: :ssl,
                                  send: send,

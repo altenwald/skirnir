@@ -1,8 +1,6 @@
-require Timex
-
 defmodule Skirnir.Smtp.Email do
+  require Timex
   import Skirnir.Smtp.Server.Parser, only: [parse_header: 1]
-
   alias Skirnir.Smtp.Email
 
   # retry every 4 hours
@@ -69,13 +67,12 @@ defmodule Skirnir.Smtp.Email do
     end
   end
 
-  defp next_try(),
-    do: Timex.shift(Timex.now(), seconds: retry_time())
+  defp next_try, do: Timex.shift(Timex.now(), seconds: retry_time())
 
-  defp retry_time(),
+  defp retry_time,
     do: Application.get_env(:skirnir, :message_retry_in, @retry_time)
 
-  defp expires(),
+  defp expires,
     do: Application.get_env(:skirnir, :message_expiration, @expires)
 
   def add_return_path(headers, mail_from) do
@@ -105,18 +102,11 @@ defmodule Skirnir.Smtp.Email do
     [{"Received", value}|headers]
   end
 
-  defp parse_headers(headers) do
-    parse_headers(headers, [], "")
-  end
-
-  defp parse_headers([], head_map, _content) do
-    head_map
-  end
-
+  defp parse_headers(headers), do: parse_headers(headers, [], "")
+  defp parse_headers([], head_map, _content), do: head_map
   defp parse_headers([{:header, key, value}|headers], head_map, content) do
     parse_headers(headers, [{key, value <> content}|head_map], "")
   end
-
   defp parse_headers([{:continue, value}|headers], head_map, content) do
     parse_headers(headers, head_map, value <> content)
   end

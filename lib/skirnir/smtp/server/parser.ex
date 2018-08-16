@@ -51,7 +51,8 @@ defmodule Skirnir.Smtp.Server.Parser do
   end
 
   defp validate_email(email) do
-    case Regex.run(~r/^<[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}>$/, email) do
+    email_regex = ~r/^<[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}>$/
+    case Regex.run(email_regex, email) do
       nil ->
         {:error, :bademail}
       [email] ->
