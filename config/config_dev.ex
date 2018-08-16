@@ -25,6 +25,17 @@ config :logger, :file,
 #     host: "127.0.0.1",
 #     port: 514
 
+# config to connect to PostgreSQL:
+config :dbi, "Skirnir.Backend.DBI": [
+    type: :pgsql,
+    host: 'localhost',
+    user: 'skirnir',
+    pass: 'skirnir',
+    database: 'skirnir',
+    port: 5432,
+    poolsize: 10
+]
+
 config :skirnir,
 
     # smtp server
@@ -52,24 +63,15 @@ config :skirnir,
 
     # type of database for delivery backend
     # it should be one of those:
-    # - Skirnir.Delivery.Backend.Postgresql
+    # - Skirnir.Delivery.Backend.DBI
     # - Skirnir.Delivery.Backend.Couchbase
-    delivery_backend: Skirnir.Delivery.Backend.Postgresql,
+    delivery_backend: Skirnir.Delivery.Backend.DBI,
 
     # type of queue backend
     # it should be one of those:
     # - Skirnir.Smtp.Server.Storage.Leveldb
     # - Skirnir.Smtp.Server.Storage.Rocksdb
     queue_backend: Skirnir.Smtp.Server.Storage.Rocksdb,
-
-    # config to connect to PostgreSQL:
-    backend_postgrex: [
-        hostname: "localhost",
-        username: "skirnir",
-        password: "skirnir",
-        database: "skirnir",
-        port: 5432
-    ],
 
     # message should be retried in X seconds
     message_retry_in: 5,
@@ -86,6 +88,6 @@ config :skirnir,
 
     # type of database for auth access
     # it should be one of those:
-    # - Skirnir.Auth.Backend.Postgresql
+    # - Skirnir.Auth.Backend.DBI
     # - Skirnir.Auht.Backend.Couchbase
-    auth_backend: Skirnir.Auth.Backend.Postgresql
+    auth_backend: Skirnir.Auth.Backend.DBI

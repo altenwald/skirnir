@@ -17,8 +17,7 @@ defmodule Skirnir.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :ranch, :timex, :erocksdb,
-                    :gen_state_machine],
+    [extra_applications: [:logger],
      mod: {Skirnir, []}]
   end
 
@@ -36,7 +35,8 @@ defmodule Skirnir.Mixfile do
      {:syslog, github: "altenwald/syslog"},
 
      # delivery postgresql backend:
-     {:postgrex, "~> 0.13.3"},
+     {:dbi, "~> 1.1.4", override: true},
+     {:dbi_pgsql, "~> 0.2.0"},
 
      # workers pool
      {:poolboy, "~> 1.5.0"},
