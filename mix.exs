@@ -50,7 +50,7 @@ defmodule Skirnir.Mixfile do
   end
 
   defp aliases do
-    [test: ["test --cover", "coveralls.json"],
+    [test: ["test --cover"],
      compile: [&set_env/1, "compile"],
      bootstrap: ["local.rebar --force", "local.hex --force"],
      clean: [&full_clean/1]]
