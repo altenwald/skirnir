@@ -33,7 +33,8 @@ config :dbi, "Skirnir.Backend.DBI": [
     pass: 'skirnir',
     database: 'skirnir',
     port: 5432,
-    poolsize: 10
+    poolsize: 10,
+    migrations: :skirnir
 ]
 
 config :skirnir,
