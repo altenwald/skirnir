@@ -30,14 +30,14 @@ defmodule Skirnir.Mixfile do
      {:gen_state_machine, "~> 2.0.1"},
 
      # rocksdb backend:
-     {:erocksdb, github: "leo-project/erocksdb", tag: "4.13.5", manager: :rebar},
+     {:erocksdb, github: "leo-project/erocksdb", branch: "develop", manager: :rebar},
 
      {:logger_file_backend, "~> 0.0.7"},
      {:syslog, github: "altenwald/syslog"},
 
      # delivery postgresql backend:
-     {:dbi, "~> 1.1.4", override: true},
-     {:dbi_pgsql, "~> 0.2.0"},
+     {:dbi_ex, "~> 1.1.5"},
+     {:dbi_pgsql, "~> 0.2.1"},
 
      # workers pool
      {:poolboy, "~> 1.5.0"},
