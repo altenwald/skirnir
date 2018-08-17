@@ -8,6 +8,7 @@ defmodule Skirnir.Mixfile do
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps(),
+     aliases: aliases(),
      test_coverage: [tool: ExCoveralls],
      preferred_cli_env: ["coveralls": :test,
                          "coveralls.detail": :test,
@@ -46,5 +47,20 @@ defmodule Skirnir.Mixfile do
      {:excoveralls, "~> 0.7.3", only: :test},
      {:gen_smtp, "~> 0.12.0", only: :test},
      {:eimap, "~> 0.4.0", github: "altenwald/eimap", only: :test}]
+  end
+
+  defp aliases do
+    [test: ["test --cover", "coveralls.json"],
+     compile: [&set_env/1, "compile"],
+     bootstrap: ["local.rebar --force", "local.mix --force"],
+     clean: [&full_clean/1]]
+  end
+
+  defp full_clean(_) do
+    File.rm_rf! "_build"
+  end
+
+  defp set_env(_) do
+    System.put_env "CFLAGS", "-Wno-error"
   end
 end
