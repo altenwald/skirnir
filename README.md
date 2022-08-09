@@ -3,13 +3,14 @@
 [![Build Status](https://img.shields.io/travis/altenwald/skirnir/master.svg)](https://travis-ci.org/altenwald/skirnir)
 [![Codecov](https://img.shields.io/codecov/c/github/altenwald/skirnir.svg)](https://codecov.io/gh/altenwald/skirnir)
 [![License: GPL 3](https://img.shields.io/github/license/altenwald/skirnir.svg)](https://raw.githubusercontent.com/altenwald/skirnir/master/COPYING)
-[![Source Level](https://app.sourcelevel.io/github/altenwald/skirnir.svg)](https://app.sourcelevel.io/github/altenwald/skirnir)
 
 Skirnir is an Email Server developed in 100% pure Elixir and Erlang/OTP.
 
 The main aim is create a complete server (SMTP, IMAP and Sieve).
 
 If you want to see our progress you can check our [Trello](https://trello.com/b/4SRbcC8M/skirnir) board.
+
+[![paypal](https://www.paypalobjects.com/en_US/GB/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=XK6Z5XATN77L2)
 
 ## Standars
 
